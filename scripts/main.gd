@@ -73,9 +73,9 @@ func _place(path: String, pos: Vector2, centered: bool = true) -> Sprite2D:
 # Cottage — 112×80 sprite
 
 func _build_cottage(pos: Vector2) -> void:
+	# cottage.png is now the cropped facade only (48×80). Anchor by base.
 	var s := _place(SPR + "objects/cottage.png", pos, false)
-	# anchor by approximate base of building so y-sort lines up
-	s.offset = Vector2(-56, -64)
+	s.offset = Vector2(-24, -64)
 
 func _build_chicken_house(pos: Vector2) -> void:
 	var s := _place(SPR + "objects/chicken_house.png", pos, false)
@@ -85,25 +85,23 @@ func _build_chicken_house(pos: Vector2) -> void:
 # Fence around the farm patch (rough rectangle, gap on the right for a path)
 
 func _build_fence_around_farm() -> void:
-	# Farm patch in pixel coords
 	var x_min := -100
 	var x_max := 80
 	var y_min := 30
 	var y_max := 200
 	var step := TILE
-	# Top + bottom
+	# Top + bottom rows (horizontal fences with rails)
 	var x := x_min
 	while x <= x_max:
-		_place(SPR + "tiles/fence_h.png", Vector2(x, y_min), false)
-		_place(SPR + "tiles/fence_h.png", Vector2(x, y_max), false)
+		_place(SPR + "tiles/fence_top.png",    Vector2(x, y_min), false)
+		_place(SPR + "tiles/fence_bottom.png", Vector2(x, y_max), false)
 		x += step
-	# Sides
+	# Left + right vertical sides (with gap on right for the path)
 	var y := y_min + step
 	while y < y_max:
-		_place(SPR + "tiles/fence_v.png", Vector2(x_min, y), false)
-		# Skip a few rows on the right side to leave a path gap
+		_place(SPR + "tiles/fence_left.png", Vector2(x_min, y), false)
 		if y < 100 or y > 140:
-			_place(SPR + "tiles/fence_v.png", Vector2(x_max, y), false)
+			_place(SPR + "tiles/fence_right.png", Vector2(x_max, y), false)
 		y += step
 
 # ────────────────────────────────────────────────────────────────────────────
