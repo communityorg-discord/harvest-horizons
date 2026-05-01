@@ -269,15 +269,15 @@ func _build_cottage(origin: Vector3) -> void:
 
 func _build_cottage_door() -> void:
 	var door := Area3D.new()
-	door.position = COTTAGE_POS + Vector3(0, 0.6, 1.95)
-	add_child(door)
-	door.set_script(load("res://scripts/door.gd"))
+	door.set_script(load("res://scripts/door.gd"))  # set BEFORE add_child so _ready() fires
 	door.set("target_scene", "res://scenes/cottage_interior.tscn")
+	door.position = COTTAGE_POS + Vector3(0, 0.6, 1.95)
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(1.0, 1.4, 0.4)
+	shape.size = Vector3(1.6, 1.8, 1.2)
 	col.shape = shape
 	door.add_child(col)
+	add_child(door)
 	# Glow marker on the door step
 	var marker := MeshInstance3D.new()
 	var mm := SphereMesh.new()
@@ -370,15 +370,15 @@ func _build_perimeter_walls() -> void:
 
 func _build_town_gate() -> void:
 	var gate := Area3D.new()
-	gate.position = Vector3(FARM_X_MAX + 0.8, 0.6, 0.0)
-	add_child(gate)
 	gate.set_script(load("res://scripts/door.gd"))
 	gate.set("target_scene", "res://scenes/town_centre.tscn")
+	gate.position = Vector3(FARM_X_MAX + 0.8, 0.6, 0.0)
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(2.0, 1.4, 4.0)
+	shape.size = Vector3(2.0, 1.8, 4.0)
 	col.shape = shape
 	gate.add_child(col)
+	add_child(gate)
 	# Gate posts + lintel
 	_box(self, gate.position + Vector3(0, 1.0, -2.4), Vector3(0.16, 2.4, 0.16), WOOD_BEAM)
 	_box(self, gate.position + Vector3(0, 1.0,  2.4), Vector3(0.16, 2.4, 0.16), WOOD_BEAM)

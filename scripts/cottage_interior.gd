@@ -1,13 +1,25 @@
 extends Node3D
 ## Cottage interior. A small wood-floored room with furniture. The exit door
-## sits at the south wall and warps back to the main farm scene.
+## sits at the south wall and warps back to the main farm scene. The bed in
+## the north-west corner is the player's save point — interact with it to
+## sleep (see scripts/bed.gd and docs/DESIGN.md).
 
 const SURVIVAL := "res://assets/models/survival/"
+
+# World-space marker for where the player wakes up beside the bed.
+const BEDSIDE_POS := Vector3(-1.8, 1.0, -3.0)
+
+@onready var _player: CharacterBody3D = $Player
 
 func _ready() -> void:
 	_build_room()
 	_furnish()
+	_build_bed()
 	_build_exit_door()
+	# If we just teleported in via sleep / pass-out, drop the player at the bedside.
+	if GameState.next_spawn == "bed_side":
+		_player.global_position = BEDSIDE_POS
+		GameState.next_spawn = ""
 
 func _build_room() -> void:
 	# Floor (planked wood)
@@ -72,10 +84,6 @@ func _wall(pos: Vector3, size: Vector3, color: Color) -> void:
 	body.add_child(col)
 
 func _furnish() -> void:
-	# Bed — north wall
-	_box(Vector3(-3.5, 0.4, -3.0), Vector3(2.0, 0.5, 2.4), Color(0.82, 0.74, 0.58))
-	_box(Vector3(-3.5, 0.85, -3.5), Vector3(2.0, 0.4, 1.4), Color(0.95, 0.88, 0.78))
-	_box(Vector3(-3.5, 0.95, -3.95), Vector3(1.6, 0.25, 0.4), Color(0.55, 0.30, 0.30))
 	# Table
 	_box(Vector3(2.0, 0.45, -1.5), Vector3(2.0, 0.1, 1.2), Color(0.55, 0.36, 0.22))
 	for sx in [-0.85, 0.85]:
@@ -111,17 +119,53 @@ func _box(pos: Vector3, size: Vector3, color: Color) -> void:
 	mi.material_override = mat
 	add_child(mi)
 
-func _build_exit_door() -> void:
-	var door := Area3D.new()
-	door.position = Vector3(0, 0.6, 3.85)
-	add_child(door)
-	door.set_script(load("res://scripts/door.gd"))
-	door.set("target_scene", "res://scenes/main.tscn")
+func _build_bed() -> void:
+	# Visuals — frame, mattress, pillow
+	_box(Vector3(-3.5, 0.40, -3.0), Vector3(2.0, 0.5, 2.4), Color(0.82, 0.74, 0.58))
+	_box(Vector3(-3.5, 0.85, -3.5), Vector3(2.0, 0.4, 1.4), Color(0.95, 0.88, 0.78))
+	_box(Vector3(-3.5, 0.95, -3.95), Vector3(1.6, 0.25, 0.4), Color(0.55, 0.30, 0.30))
+
+	# Solid collision so the player can't walk through the bed.
+	var body := StaticBody3D.new()
+	body.position = Vector3(-3.5, 0.6, -3.0)
+	add_child(body)
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(1.4, 1.4, 0.4)
+	shape.size = Vector3(2.0, 1.2, 2.4)
+	col.shape = shape
+	body.add_child(col)
+
+	# Marker — where the player wakes up (foot of the bed)
+	var marker := Marker3D.new()
+	marker.name = "BedSide"
+	marker.position = BEDSIDE_POS
+	add_child(marker)
+
+	# Area3D — interaction zone alongside the bed
+	var area := Area3D.new()
+	area.name = "BedArea"
+	area.set_script(load("res://scripts/bed.gd"))
+	area.position = Vector3(-2.2, 0.6, -3.0)
+	var acol := CollisionShape3D.new()
+	var ashape := BoxShape3D.new()
+	ashape.size = Vector3(1.5, 1.4, 2.4)
+	acol.shape = ashape
+	area.add_child(acol)
+	add_child(area)
+	# Set marker reference using an absolute NodePath after both nodes exist.
+	area.set("bedside_marker", area.get_path_to(marker))
+
+func _build_exit_door() -> void:
+	var door := Area3D.new()
+	door.set_script(load("res://scripts/door.gd"))
+	door.set("target_scene", "res://scenes/main.tscn")
+	door.position = Vector3(0, 0.6, 3.85)
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(1.6, 1.8, 1.2)
 	col.shape = shape
 	door.add_child(col)
+	add_child(door)
 	# Visible door slab
 	var slab := MeshInstance3D.new()
 	var bm := BoxMesh.new()

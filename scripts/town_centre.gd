@@ -279,15 +279,15 @@ func _solid_block(pos: Vector3, size: Vector3) -> void:
 
 func _build_return_gate() -> void:
 	var gate := Area3D.new()
-	gate.position = Vector3(-16.8, 0.6, 0.0)
-	add_child(gate)
 	gate.set_script(load("res://scripts/door.gd"))
 	gate.set("target_scene", "res://scenes/main.tscn")
+	gate.position = Vector3(-16.8, 0.6, 0.0)
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(2.0, 1.4, 4.0)
+	shape.size = Vector3(2.0, 1.8, 4.0)
 	col.shape = shape
 	gate.add_child(col)
+	add_child(gate)
 	# Gate posts + lintel
 	_box(gate.position + Vector3(0, 1.0, -2.4), Vector3(0.2, 2.4, 0.2), Color(0.30, 0.20, 0.12))
 	_box(gate.position + Vector3(0, 1.0,  2.4), Vector3(0.2, 2.4, 0.2), Color(0.30, 0.20, 0.12))
