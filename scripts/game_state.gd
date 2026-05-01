@@ -29,12 +29,20 @@ var rank: int = Rank.NEW_ARRIVAL
 # Set of completed quest ids. Areas/dialog gate on these.
 var quest_flags: Dictionary = {}
 
+# Currently selected hotbar tool (0..5 — see HOTBAR_TOOLS in hud.gd)
+var current_tool: int = 0
+
+# Inventory: {item_id (String): count (int)}. Tools are infinite and not tracked here.
+var inventory: Dictionary = {"parsnip_seeds": 8, "parsnip": 0, "wood": 0, "stone": 0}
+
 signal time_changed(hour: int, minute: int)
 signal day_changed(day: int, month: int, year: int)
 signal money_changed(amount: int)
 signal weather_changed(weather: int)
 signal rank_changed(rank: int)
 signal quest_completed(quest_id: String)
+signal current_tool_changed(index: int)
+signal inventory_changed(item_id: String, count: int)
 
 func _process(delta: float) -> void:
 	var prev_minute := int(minute)
@@ -93,3 +101,23 @@ func complete_quest(quest_id: String) -> void:
 
 func has_completed(quest_id: String) -> bool:
 	return quest_flags.has(quest_id)
+
+func set_current_tool(index: int) -> void:
+	if index == current_tool:
+		return
+	current_tool = index
+	current_tool_changed.emit(index)
+
+func add_item(item_id: String, count: int = 1) -> void:
+	inventory[item_id] = inventory.get(item_id, 0) + count
+	inventory_changed.emit(item_id, inventory[item_id])
+
+func remove_item(item_id: String, count: int = 1) -> bool:
+	if inventory.get(item_id, 0) < count:
+		return false
+	inventory[item_id] -= count
+	inventory_changed.emit(item_id, inventory[item_id])
+	return true
+
+func item_count(item_id: String) -> int:
+	return inventory.get(item_id, 0)

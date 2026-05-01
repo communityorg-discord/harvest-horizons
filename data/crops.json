@@ -1,0 +1,37 @@
+{
+  "_comment": "Crop data. seed_item is the item used to plant; harvest_item is what comes back. growth_seconds is real-time for the prototype; later we'll switch to game-day ticks.",
+  "crops": {
+    "parsnip": {
+      "name": "Parsnip",
+      "season": "spring",
+      "seed_item": "parsnip_seeds",
+      "harvest_item": "parsnip",
+      "growth_seconds": 10.0,
+      "stages": 3,
+      "sell_price": 35,
+      "energy": 20
+    },
+    "potato": {
+      "name": "Potato",
+      "season": "spring",
+      "seed_item": "potato_seeds",
+      "harvest_item": "potato",
+      "growth_seconds": 14.0,
+      "stages": 3,
+      "sell_price": 80,
+      "energy": 25
+    },
+    "strawberry": {
+      "name": "Strawberry",
+      "season": "spring",
+      "seed_item": "strawberry_seeds",
+      "harvest_item": "strawberry",
+      "growth_seconds": 18.0,
+      "stages": 4,
+      "sell_price": 120,
+      "energy": 25,
+      "regrows": true,
+      "regrow_seconds": 8.0
+    }
+  }
+}
