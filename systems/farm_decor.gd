@@ -55,6 +55,7 @@ const COTTAGE_FOOTPRINT := Vector3(4.4, 3.0, 3.6)
 func _ready() -> void:
 	_build_ground()
 	_build_path()
+	_build_stepping_stones()
 	_build_cottage(COTTAGE_POS)
 	_build_well(Vector3(-4.5, 0, -7.0))
 	_build_mailbox(Vector3(-4.5, 0, 5.5))
@@ -70,7 +71,18 @@ func _ready() -> void:
 	_scatter_logs()
 	_scatter_grass_patches()
 	_scatter_flowers()
+	_scatter_mushrooms()
 	_scatter_grass_tufts()
+	# Distinct landmarks
+	_build_pond(Vector3(8.5, 0, -8.5), 4.0, 2.5)
+	_build_scarecrow(Vector3(2.0, 0, 6.0))
+	_build_stone_circle(Vector3(-13.0, 0, 8.0), 2.2)
+	_build_picnic_area(Vector3(-2.5, 0, -1.0))
+	_build_lantern(Vector3(-4.5, 0, 1.5))
+	_build_lantern(Vector3(2.5, 0, -2.5))
+	_build_lantern(Vector3(11.0, 0, 0.5))
+	_build_dead_tree(Vector3(12.0, 0, 8.0))
+	_build_cart(Vector3(-10.0, 0, 4.0))
 	_build_cottage_door()
 	_build_town_gate()
 
@@ -511,3 +523,249 @@ func _random_inside(rng: RandomNumberGenerator, min_radius: float = 2.0, max_rad
 			continue
 		return Vector3(x, 0, z)
 	return Vector3(0, 0, 5)  # fallback
+
+# ────────────────────────────────────────────────────────────────────────────
+# Distinct landmarks — pond, scarecrow, stone circle, picnic, lanterns, etc.
+
+# Stepping stones along the dirt path edge
+func _build_stepping_stones() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 121
+	var stone_mat := _mat(Color(0.55, 0.52, 0.48), 0.95)
+	var pts := [
+		Vector3(-7.0, 0.07, -1.2),
+		Vector3(-3.0, 0.07, -1.0),
+		Vector3(1.0, 0.07, -1.4),
+		Vector3(5.0, 0.07, -2.0),
+		Vector3(10.0, 0.07, -2.0),
+	]
+	for p in pts:
+		var s := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.7, 0.10, 0.55)
+		s.mesh = bm
+		s.position = p + Vector3(rng.randf_range(-0.2, 0.2), 0, rng.randf_range(-0.2, 0.2))
+		s.rotation.y = rng.randf() * TAU
+		s.material_override = stone_mat
+		add_child(s)
+
+# Round pond with a stone rim and a still water surface
+func _build_pond(center: Vector3, radius_x: float, radius_z: float) -> void:
+	# Water surface (flat ellipse)
+	var water := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(radius_x * 2.0, radius_z * 2.0)
+	water.mesh = pm
+	water.position = center + Vector3(0, 0.04, 0)
+	var wmat := StandardMaterial3D.new()
+	wmat.albedo_color = Color(0.18, 0.45, 0.65, 0.95)
+	wmat.metallic = 0.45
+	wmat.roughness = 0.15
+	wmat.emission_enabled = true
+	wmat.emission = Color(0.05, 0.15, 0.25)
+	wmat.emission_energy_multiplier = 0.3
+	water.material_override = wmat
+	add_child(water)
+	# Stone rim around the pond — many small rocks placed in an ellipse
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 333
+	var n: int = 24
+	for i in range(n):
+		var t: float = (i / float(n)) * TAU
+		var p := center + Vector3(cos(t) * radius_x * 1.05, 0.0, sin(t) * radius_z * 1.05)
+		var rock_path: String = NATURE + ROCK_PATHS[rng.randi() % ROCK_PATHS.size()]
+		_place_collidable_kenney(rock_path, p, rng.randf_range(0.7, 1.1), rng.randf() * TAU, 0.3, 0.4)
+	# A few lily pads (small green discs)
+	for i in range(4):
+		var t: float = rng.randf_range(0, TAU)
+		var r: float = rng.randf_range(0.0, min(radius_x, radius_z) * 0.6)
+		var lily := MeshInstance3D.new()
+		var lpm := PlaneMesh.new()
+		lpm.size = Vector2(0.5, 0.4)
+		lily.mesh = lpm
+		lily.position = center + Vector3(cos(t) * r, 0.06, sin(t) * r)
+		lily.rotation.y = rng.randf() * TAU
+		lily.material_override = _mat(Color(0.22, 0.55, 0.22, 0.95))
+		add_child(lily)
+
+# A scarecrow — cross of poles, sphere head with hat, cloth flaps
+func _build_scarecrow(origin: Vector3) -> void:
+	# Vertical pole
+	_box(self, origin + Vector3(0, 1.0, 0), Vector3(0.10, 2.0, 0.10), WOOD_BEAM)
+	# Horizontal arms
+	_box(self, origin + Vector3(0, 1.55, 0), Vector3(1.4, 0.08, 0.08), WOOD_BEAM)
+	# Body cloth (hanging shirt)
+	_box(self, origin + Vector3(0, 1.25, 0), Vector3(0.7, 0.7, 0.05), Color(0.55, 0.30, 0.25))
+	# Sleeves
+	_box(self, origin + Vector3(-0.55, 1.55, 0), Vector3(0.30, 0.10, 0.10), Color(0.55, 0.30, 0.25))
+	_box(self, origin + Vector3( 0.55, 1.55, 0), Vector3(0.30, 0.10, 0.10), Color(0.55, 0.30, 0.25))
+	# Head — straw sphere
+	_sphere(self, origin + Vector3(0, 2.10, 0), 0.22, Color(0.92, 0.80, 0.42))
+	# Hat brim + cone
+	_cyl(self, origin + Vector3(0, 2.32, 0), 0.40, 0.04, Color(0.30, 0.20, 0.12))
+	var hat_top := MeshInstance3D.new()
+	var hm := CylinderMesh.new()
+	hm.top_radius = 0.0
+	hm.bottom_radius = 0.22
+	hm.height = 0.30
+	hat_top.mesh = hm
+	hat_top.position = origin + Vector3(0, 2.50, 0)
+	hat_top.material_override = _mat(Color(0.30, 0.20, 0.12))
+	add_child(hat_top)
+	# Eyes (×)
+	_sphere(self, origin + Vector3(-0.08, 2.12, 0.18), 0.030, Color.BLACK)
+	_sphere(self, origin + Vector3( 0.08, 2.12, 0.18), 0.030, Color.BLACK)
+	# Solid collider
+	var body := StaticBody3D.new()
+	body.position = origin + Vector3(0, 1.0, 0)
+	add_child(body)
+	var col := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = 0.25
+	shape.height = 2.5
+	col.shape = shape
+	body.add_child(col)
+
+# Stone circle — 6 standing stones in a ring
+func _build_stone_circle(center: Vector3, radius: float) -> void:
+	var n: int = 6
+	for i in range(n):
+		var t: float = (i / float(n)) * TAU
+		var p := center + Vector3(cos(t) * radius, 0, sin(t) * radius)
+		var stone := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.45, 1.6 + (i % 2) * 0.4, 0.40)
+		stone.mesh = bm
+		stone.position = p + Vector3(0, bm.size.y * 0.5, 0)
+		stone.rotation.y = t + randf_range(-0.2, 0.2)
+		stone.material_override = _mat(Color(0.45, 0.42, 0.38))
+		add_child(stone)
+		# Collision
+		var body := StaticBody3D.new()
+		body.position = stone.position
+		add_child(body)
+		var col := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = bm.size
+		col.shape = shape
+		body.add_child(col)
+
+# Picnic table + 2 benches
+func _build_picnic_area(origin: Vector3) -> void:
+	# Tabletop
+	_box(self, origin + Vector3(0, 0.65, 0), Vector3(2.4, 0.10, 1.0), Color(0.55, 0.36, 0.22))
+	# Legs
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			_box(self, origin + Vector3(sx * 1.0, 0.32, sz * 0.4), Vector3(0.10, 0.65, 0.10), Color(0.32, 0.20, 0.12))
+	# Benches
+	_box(self, origin + Vector3(0, 0.40,  0.85), Vector3(2.4, 0.08, 0.30), Color(0.62, 0.42, 0.26))
+	_box(self, origin + Vector3(0, 0.40, -0.85), Vector3(2.4, 0.08, 0.30), Color(0.62, 0.42, 0.26))
+	for sx in [-1.0, 1.0]:
+		_box(self, origin + Vector3(sx * 1.0, 0.20,  0.85), Vector3(0.08, 0.40, 0.08), Color(0.32, 0.20, 0.12))
+		_box(self, origin + Vector3(sx * 1.0, 0.20, -0.85), Vector3(0.08, 0.40, 0.08), Color(0.32, 0.20, 0.12))
+	# Table collider only
+	_add_collider(origin + Vector3(0, 0.5, 0), Vector3(2.4, 1.0, 1.0))
+
+# Wooden lantern post with a glowing top (and a real OmniLight3D)
+func _build_lantern(origin: Vector3) -> void:
+	_box(self, origin + Vector3(0, 0.85, 0), Vector3(0.08, 1.7, 0.08), Color(0.30, 0.20, 0.12))
+	# Lantern box
+	_box(self, origin + Vector3(0, 1.85, 0), Vector3(0.28, 0.30, 0.28), Color(0.28, 0.20, 0.12))
+	# Glow sphere inside
+	var glow := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.10
+	sm.height = 0.20
+	glow.mesh = sm
+	glow.position = origin + Vector3(0, 1.85, 0)
+	var gmat := StandardMaterial3D.new()
+	gmat.albedo_color = Color(1.0, 0.9, 0.55)
+	gmat.emission_enabled = true
+	gmat.emission = Color(1.0, 0.78, 0.38)
+	gmat.emission_energy_multiplier = 2.0
+	glow.material_override = gmat
+	add_child(glow)
+	# Real light
+	var light := OmniLight3D.new()
+	light.position = origin + Vector3(0, 1.85, 0)
+	light.light_color = Color(1.0, 0.85, 0.55)
+	light.light_energy = 1.4
+	light.omni_range = 6.0
+	add_child(light)
+	# Slim collider
+	_add_collider(origin + Vector3(0, 0.85, 0), Vector3(0.2, 1.7, 0.2))
+
+# Big dead tree — twisted dark trunk with branchy silhouette, no leaves
+func _build_dead_tree(origin: Vector3) -> void:
+	# Trunk
+	_cyl(self, origin + Vector3(0, 1.6, 0), 0.32, 3.2, Color(0.18, 0.12, 0.08))
+	# Branches (4 angled boxes)
+	var branches := [
+		[Vector3(0.4, 2.6, 0.0), Vector3(1.2, 0.18, 0.18), Vector3(0, 0, deg_to_rad(-25))],
+		[Vector3(-0.4, 2.4, 0.0), Vector3(1.2, 0.18, 0.18), Vector3(0, 0, deg_to_rad(25))],
+		[Vector3(0.0, 3.0, 0.4),  Vector3(0.18, 0.18, 1.2), Vector3(deg_to_rad(-25), 0, 0)],
+		[Vector3(0.0, 2.7, -0.4), Vector3(0.18, 0.18, 1.0), Vector3(deg_to_rad(25), 0, 0)],
+	]
+	for b in branches:
+		var mi := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = b[1]
+		mi.mesh = bm
+		mi.position = origin + b[0]
+		mi.rotation = b[2]
+		mi.material_override = _mat(Color(0.16, 0.10, 0.06))
+		add_child(mi)
+	# Cylinder collider
+	var body := StaticBody3D.new()
+	body.position = origin + Vector3(0, 1.6, 0)
+	add_child(body)
+	var col := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = 0.4
+	shape.height = 3.2
+	col.shape = shape
+	body.add_child(col)
+
+# Wooden cart — bed with 2 wheels, abandoned look
+func _build_cart(origin: Vector3) -> void:
+	# Bed
+	_box(self, origin + Vector3(0, 0.55, 0), Vector3(1.6, 0.12, 0.9), Color(0.55, 0.36, 0.22))
+	# Side rails
+	_box(self, origin + Vector3(0, 0.85, -0.42), Vector3(1.6, 0.36, 0.06), Color(0.45, 0.30, 0.18))
+	_box(self, origin + Vector3(0, 0.85,  0.42), Vector3(1.6, 0.36, 0.06), Color(0.45, 0.30, 0.18))
+	_box(self, origin + Vector3(0.78, 0.85, 0), Vector3(0.06, 0.36, 0.9), Color(0.45, 0.30, 0.18))
+	# Wheels
+	for sx in [-0.5, 0.5]:
+		var w := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.32
+		cm.bottom_radius = 0.32
+		cm.height = 0.10
+		w.mesh = cm
+		w.position = origin + Vector3(sx, 0.32, 0.55)
+		w.rotation = Vector3(deg_to_rad(90), 0, 0)
+		w.material_override = _mat(Color(0.30, 0.20, 0.12))
+		add_child(w)
+		# Hub
+		_sphere(self, origin + Vector3(sx, 0.32, 0.55), 0.06, Color(0.18, 0.12, 0.08))
+	# Tongue
+	_box(self, origin + Vector3(1.2, 0.55, 0), Vector3(1.0, 0.06, 0.06), Color(0.32, 0.20, 0.12))
+	# Collider
+	_add_collider(origin + Vector3(0, 0.5, 0), Vector3(1.8, 1.0, 1.0))
+
+# Mushroom clusters — tiny coloured caps grouped together
+func _scatter_mushrooms() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 88
+	var cap_colors := [Color(0.78, 0.22, 0.20), Color(0.85, 0.55, 0.18), Color(0.62, 0.45, 0.85)]
+	for c in range(8):  # 8 clusters
+		var origin := _random_inside(rng, 3.0, 13.0)
+		var n := rng.randi_range(3, 6)
+		for i in range(n):
+			var p := origin + Vector3(rng.randf_range(-0.4, 0.4), 0.0, rng.randf_range(-0.4, 0.4))
+			# Stem
+			_cyl(self, p + Vector3(0, 0.08, 0), 0.04, 0.16, Color(0.95, 0.92, 0.80))
+			# Cap
+			var cap_color: Color = cap_colors[rng.randi() % cap_colors.size()]
+			_sphere(self, p + Vector3(0, 0.18, 0), 0.10, cap_color, Vector3(1.0, 0.6, 1.0))

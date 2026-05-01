@@ -1,39 +1,45 @@
 extends CanvasLayer
-## Cozy game HUD — sized to match the concept art proportions:
-## small player card top-left, single combined stats pill top-centre,
-## small circular minimap top-right, tight active-quests panel right side,
-## hotbar bottom-centre, side-menu icon buttons bottom-right, event log
-## bottom-left. Live-bound to GameState (hp/energy/money/time/weather/quests).
+## Cozy game HUD — designed to FLOAT in the screen the way the concept art
+## does, not sit in heavy framed boxes. Key visual moves:
+##   - Avatar circle protrudes out of the player bars (sticks up + left)
+##   - All panels use a dark translucent rounded pill with a gold hairline,
+##     no thick borders, soft drop shadow only
+##   - Side-menu buttons are round icon coins, not text rectangles
+##   - Spacing is tight; everything sized to ~60% of the previous footprint
+## Live-bound to GameState (hp/energy/money/time/weather/quests).
 
 # ────────────────────────────────────────────────────────────────────────────
 # Theme
 
-const PARCHMENT       := Color(0.96, 0.92, 0.82, 0.95)
-const DARK_PANEL      := Color(0.18, 0.14, 0.10, 0.92)
-const INK             := Color(0.22, 0.16, 0.10)
-const INK_SOFT        := Color(0.45, 0.35, 0.22)
-const BORDER          := Color(0.55, 0.40, 0.25)
-const GOLD            := Color(0.78, 0.62, 0.28)
-const LEAF            := Color(0.40, 0.55, 0.22)
-const BERRY           := Color(0.72, 0.32, 0.22)
-const HP_GREEN        := Color(0.40, 0.74, 0.32)
-const EN_BLUE         := Color(0.32, 0.62, 0.86)
+const PANEL_BG       := Color(0.12, 0.09, 0.06, 0.78)   # translucent dark
+const PANEL_BORDER   := Color(0.78, 0.62, 0.28, 0.55)   # gold hairline
+const PARCHMENT      := Color(0.96, 0.92, 0.82, 0.95)
+const INK            := Color(0.22, 0.16, 0.10)
+const INK_SOFT       := Color(0.45, 0.35, 0.22)
+const GOLD           := Color(0.92, 0.78, 0.36)
+const LEAF           := Color(0.45, 0.62, 0.25)
+const BERRY          := Color(0.82, 0.36, 0.26)
+const HP_GREEN       := Color(0.42, 0.78, 0.32)
+const EN_BLUE        := Color(0.32, 0.62, 0.86)
+const TEXT_LIGHT     := Color(0.96, 0.92, 0.82)
+const TEXT_DIM       := Color(0.85, 0.78, 0.62)
+const SHADOW         := Color(0, 0, 0, 0.45)
 
 const HOTBAR_TOOLS := [
-	{"name": "Hoe",     "label": "H", "key": "1"},
-	{"name": "Water",   "label": "W", "key": "2"},
-	{"name": "Axe",     "label": "A", "key": "3"},
-	{"name": "Pickaxe", "label": "P", "key": "4"},
-	{"name": "Sword",   "label": "S", "key": "5"},
-	{"name": "Seeds",   "label": "*", "key": "6"},
+	{"name": "Hoe",     "icon": "🪓", "label": "H", "key": "1"},
+	{"name": "Water",   "icon": "💧", "label": "W", "key": "2"},
+	{"name": "Axe",     "icon": "🪓", "label": "A", "key": "3"},
+	{"name": "Pickaxe", "icon": "⛏",  "label": "P", "key": "4"},
+	{"name": "Sword",   "icon": "⚔",  "label": "S", "key": "5"},
+	{"name": "Seeds",   "icon": "🌱", "label": "*", "key": "6"},
 ]
 
 const SIDE_MENU := [
-	{"label": "Inventory", "key": "I"},
-	{"label": "Skills",    "key": "K"},
-	{"label": "Journal",   "key": "U"},
-	{"label": "People",    "key": "C"},
-	{"label": "Map",       "key": "M"},
+	{"label": "Bag",     "icon": "🎒", "key": "I"},
+	{"label": "Skills",  "icon": "★",  "key": "K"},
+	{"label": "Journal", "icon": "📖", "key": "U"},
+	{"label": "People",  "icon": "👥", "key": "C"},
+	{"label": "Map",     "icon": "🗺", "key": "M"},
 ]
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -54,11 +60,10 @@ var _inventory_label: Label
 
 func _ready() -> void:
 	_build_player_card()
-	_build_top_bar()
+	_build_top_pill()
 	_build_minimap()
 	_build_quest_panel()
 	_build_hotbar()
-	_build_inventory_strip()
 	_build_side_menu()
 	_build_chat_log()
 
@@ -85,18 +90,21 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("hotbar_6"): _select_hotbar(5)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Stylebox helpers
+# Stylebox helpers — all panels use the same floating dark pill
 
-func _dark_box(corner: int = 8, padding: int = 6) -> StyleBoxFlat:
+func _floating_pill(corner: int = 14, padding: int = 8) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = DARK_PANEL
+	sb.bg_color = PANEL_BG
 	sb.set_corner_radius_all(corner)
 	sb.set_content_margin_all(padding)
-	sb.border_width_left = 2
-	sb.border_width_right = 2
-	sb.border_width_top = 2
-	sb.border_width_bottom = 2
-	sb.border_color = GOLD
+	sb.border_width_left = 1
+	sb.border_width_right = 1
+	sb.border_width_top = 1
+	sb.border_width_bottom = 1
+	sb.border_color = PANEL_BORDER
+	sb.shadow_color = SHADOW
+	sb.shadow_size = 8
+	sb.shadow_offset = Vector2(0, 3)
 	return sb
 
 func _label(text: String, size: int, color: Color, align_center: bool = false) -> Label:
@@ -109,54 +117,69 @@ func _label(text: String, size: int, color: Color, align_center: bool = false) -
 	return l
 
 # ────────────────────────────────────────────────────────────────────────────
-# Top-left: tight player card with HP/EN bars + money below
+# Top-left: bars pill with avatar circle PROTRUDING out the left side
 
 func _build_player_card() -> void:
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _dark_box(10, 6))
-	panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	panel.offset_left = 12
-	panel.offset_top = 12
-	panel.offset_right = 12 + 240
-	panel.offset_bottom = 12 + 60
-	add_child(panel)
+	# Container Control to pin everything in the top-left
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	root.offset_left = 14
+	root.offset_top = 14
+	root.offset_right = 14 + 220
+	root.offset_bottom = 14 + 64
+	add_child(root)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	panel.add_child(row)
+	# Bars pill — sits behind, indented from the left to leave room for avatar
+	var pill := PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", _floating_pill(18, 6))
+	pill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pill.offset_left = 32  # leave space on the left for the avatar to stick out
+	pill.offset_right = 0
+	pill.offset_top = 8
+	pill.offset_bottom = -4
+	root.add_child(pill)
 
-	# Avatar circle (compact)
-	var avatar := Panel.new()
-	avatar.custom_minimum_size = Vector2(48, 48)
-	var av_sb := StyleBoxFlat.new()
-	av_sb.bg_color = LEAF
-	av_sb.set_corner_radius_all(24)
-	av_sb.border_width_left = 2
-	av_sb.border_width_right = 2
-	av_sb.border_width_top = 2
-	av_sb.border_width_bottom = 2
-	av_sb.border_color = GOLD
-	avatar.add_theme_stylebox_override("panel", av_sb)
-	row.add_child(avatar)
-	_level_label = _label("1", 18, Color.WHITE, true)
-	_level_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_level_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	avatar.add_child(_level_label)
-
-	var bars := VBoxContainer.new()
-	bars.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bars.add_theme_constant_override("separation", 4)
-	row.add_child(bars)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	pill.add_child(col)
 
 	var hp_pair := _bar_with_label(HP_GREEN)
-	bars.add_child(hp_pair[0])
+	col.add_child(hp_pair[0])
 	_hp_bar = hp_pair[1]
 	_hp_text = hp_pair[2]
 
 	var en_pair := _bar_with_label(EN_BLUE)
-	bars.add_child(en_pair[0])
+	col.add_child(en_pair[0])
 	_en_bar = en_pair[1]
 	_en_text = en_pair[2]
+
+	# Avatar circle on TOP of the pill, overflowing left + up
+	var avatar := Panel.new()
+	avatar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	avatar.offset_left = 0
+	avatar.offset_top = 0
+	avatar.offset_right = 64
+	avatar.offset_bottom = 64
+	var av_sb := StyleBoxFlat.new()
+	av_sb.bg_color = LEAF
+	av_sb.set_corner_radius_all(32)
+	av_sb.border_width_left = 3
+	av_sb.border_width_right = 3
+	av_sb.border_width_top = 3
+	av_sb.border_width_bottom = 3
+	av_sb.border_color = GOLD
+	av_sb.shadow_color = SHADOW
+	av_sb.shadow_size = 6
+	av_sb.shadow_offset = Vector2(0, 2)
+	avatar.add_theme_stylebox_override("panel", av_sb)
+	root.add_child(avatar)
+
+	_level_label = _label("1", 22, Color.WHITE, true)
+	_level_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_level_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_level_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_level_label.add_theme_constant_override("outline_size", 3)
+	avatar.add_child(_level_label)
 
 func _bar_with_label(fill_color: Color) -> Array:
 	var wrap := Control.new()
@@ -165,16 +188,16 @@ func _bar_with_label(fill_color: Color) -> Array:
 	bar.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bar.show_percentage = false
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0, 0, 0, 0.6)
-	bg.set_corner_radius_all(3)
+	bg.bg_color = Color(0, 0, 0, 0.55)
+	bg.set_corner_radius_all(8)
 	bg.border_width_left = 1
 	bg.border_width_right = 1
 	bg.border_width_top = 1
 	bg.border_width_bottom = 1
-	bg.border_color = Color(1, 1, 1, 0.18)
+	bg.border_color = Color(1, 1, 1, 0.15)
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = fill_color
-	fill.set_corner_radius_all(3)
+	fill.set_corner_radius_all(8)
 	bar.add_theme_stylebox_override("background", bg)
 	bar.add_theme_stylebox_override("fill", fill)
 	wrap.add_child(bar)
@@ -192,16 +215,16 @@ func _bar_with_label(fill_color: Color) -> Array:
 	return [wrap, bar, l]
 
 # ────────────────────────────────────────────────────────────────────────────
-# Top centre: ONE compact pill — weather · date · time, money on the left side
+# Top-centre: a single floating pill with money / weather / date / time
 
-func _build_top_bar() -> void:
+func _build_top_pill() -> void:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _dark_box(10, 8))
+	panel.add_theme_stylebox_override("panel", _floating_pill(20, 8))
 	panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	panel.offset_left = -260
-	panel.offset_right = 260
-	panel.offset_top = 12
-	panel.offset_bottom = 12 + 48
+	panel.offset_left = -240
+	panel.offset_right = 240
+	panel.offset_top = 14
+	panel.offset_bottom = 14 + 40
 	add_child(panel)
 
 	var row := HBoxContainer.new()
@@ -211,62 +234,55 @@ func _build_top_bar() -> void:
 
 	_money_label = _add_inline_stat(row, "🪙", "0g", GOLD)
 	_add_divider(row)
-	_weather_label = _add_inline_stat(row, "☀", "Sunny", Color.WHITE)
+	_weather_label = _add_inline_stat(row, "☀", "Sunny", TEXT_LIGHT)
 	_add_divider(row)
-	_date_label = _add_inline_stat(row, "📅", "Spring 1, Y1", Color.WHITE)
+	_date_label = _add_inline_stat(row, "📅", "Spring 1, Y1", TEXT_LIGHT)
 	_add_divider(row)
-	_time_label = _add_inline_stat(row, "🕐", "06:00 AM", Color.WHITE)
+	_time_label = _add_inline_stat(row, "🕐", "06:00 AM", TEXT_LIGHT)
 
 func _add_inline_stat(parent: Node, icon: String, value: String, value_color: Color) -> Label:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	parent.add_child(row)
-	var i := _label(icon, 16, GOLD)
-	row.add_child(i)
-	var v := _label(value, 16, value_color)
-	row.add_child(v)
+	var inner := HBoxContainer.new()
+	inner.add_theme_constant_override("separation", 4)
+	parent.add_child(inner)
+	inner.add_child(_label(icon, 14, GOLD))
+	var v := _label(value, 14, value_color)
+	inner.add_child(v)
 	return v
 
 func _add_divider(parent: Node) -> void:
 	var d := ColorRect.new()
-	d.color = Color(1, 1, 1, 0.15)
-	d.custom_minimum_size = Vector2(1, 28)
+	d.color = Color(1, 1, 1, 0.12)
+	d.custom_minimum_size = Vector2(1, 22)
 	parent.add_child(d)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Top-right: small minimap
+# Top-right: round minimap + 3 small round icon buttons stacked beside
 
 func _build_minimap() -> void:
-	var wrap := PanelContainer.new()
-	wrap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	wrap.offset_left = -148
-	wrap.offset_top = 12
-	wrap.offset_right = -12
-	wrap.offset_bottom = 12 + 138
-	wrap.add_theme_stylebox_override("panel", _dark_box(10, 6))
-	add_child(wrap)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 3)
-	wrap.add_child(col)
-
-	col.add_child(_label("GREENFIELD", 9, GOLD, true))
-
+	# Minimap circle (no panel container — just a styled Panel for the disc)
+	var map_size: int = 110
 	var map := Panel.new()
-	map.custom_minimum_size = Vector2(120, 96)
-	var mb := StyleBoxFlat.new()
-	mb.bg_color = Color(0.20, 0.32, 0.18)
-	mb.set_corner_radius_all(48)
-	mb.border_width_left = 2
-	mb.border_width_right = 2
-	mb.border_width_top = 2
-	mb.border_width_bottom = 2
-	mb.border_color = GOLD
-	map.add_theme_stylebox_override("panel", mb)
-	col.add_child(map)
+	map.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	map.offset_left = -14 - map_size - 38  # leave room for the side icons
+	map.offset_top = 14
+	map.offset_right = -14 - 38
+	map.offset_bottom = 14 + map_size
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.20, 0.32, 0.18, 0.92)
+	sb.set_corner_radius_all(map_size / 2)
+	sb.border_width_left = 3
+	sb.border_width_right = 3
+	sb.border_width_top = 3
+	sb.border_width_bottom = 3
+	sb.border_color = GOLD
+	sb.shadow_color = SHADOW
+	sb.shadow_size = 8
+	sb.shadow_offset = Vector2(0, 3)
+	map.add_theme_stylebox_override("panel", sb)
+	add_child(map)
 
+	# Player dot
 	var dot := Panel.new()
-	dot.custom_minimum_size = Vector2(6, 6)
 	dot.set_anchors_preset(Control.PRESET_CENTER)
 	dot.offset_left = -3; dot.offset_top = -3
 	dot.offset_right = 3; dot.offset_bottom = 3
@@ -276,26 +292,65 @@ func _build_minimap() -> void:
 	dot.add_theme_stylebox_override("panel", dsb)
 	map.add_child(dot)
 
+	# 3 round side icons (Map / Quests / Bag) stacked to the right of the map
+	var icons := [
+		{"icon": "🗺", "label": "Map"},
+		{"icon": "❗", "label": "Quests"},
+		{"icon": "🎒", "label": "Bag"},
+	]
+	for i in range(icons.size()):
+		var btn := _round_icon_button(icons[i].icon)
+		btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		btn.offset_right = -14
+		btn.offset_left = btn.offset_right - 30
+		btn.offset_top = 14 + i * 36
+		btn.offset_bottom = btn.offset_top + 30
+		add_child(btn)
+
+func _round_icon_button(icon: String) -> Panel:
+	var b := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = PANEL_BG
+	sb.set_corner_radius_all(15)
+	sb.border_width_left = 1
+	sb.border_width_right = 1
+	sb.border_width_top = 1
+	sb.border_width_bottom = 1
+	sb.border_color = PANEL_BORDER
+	sb.shadow_color = SHADOW
+	sb.shadow_size = 4
+	sb.shadow_offset = Vector2(0, 2)
+	b.add_theme_stylebox_override("panel", sb)
+	var l := _label(icon, 14, GOLD, true)
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.add_child(l)
+	return b
+
 # ────────────────────────────────────────────────────────────────────────────
-# Right side: active quests (data-driven from GameState)
+# Right side: active quests (data-driven, lighter chrome)
 
 func _build_quest_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	panel.offset_left = -228
-	panel.offset_right = -12
-	panel.offset_top = -90
-	panel.offset_bottom = 90
-	panel.add_theme_stylebox_override("panel", _dark_box(10, 8))
+	panel.offset_left = -224
+	panel.offset_right = -14
+	panel.offset_top = -84
+	panel.offset_bottom = 84
+	panel.add_theme_stylebox_override("panel", _floating_pill(14, 10))
 	add_child(panel)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	panel.add_child(col)
 
-	col.add_child(_label("ACTIVE QUESTS", 10, GOLD, true))
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 6)
+	col.add_child(header)
+	header.add_child(_label("❗", 11, GOLD))
+	header.add_child(_label("ACTIVE QUESTS", 10, GOLD))
 	var sep := ColorRect.new()
-	sep.color = Color(1, 1, 1, 0.2)
+	sep.color = Color(1, 1, 1, 0.15)
 	sep.custom_minimum_size = Vector2(0, 1)
 	col.add_child(sep)
 
@@ -309,7 +364,7 @@ func _refresh_quests(_a = null, _b = null, _c = null) -> void:
 	for child in _quest_list.get_children():
 		child.queue_free()
 	if GameState.active_quests.is_empty():
-		_quest_list.add_child(_label("(none yet)", 11, Color(0.7, 0.6, 0.45)))
+		_quest_list.add_child(_label("(none yet)", 10, TEXT_DIM))
 		return
 	for quest_id in GameState.active_quests:
 		var data: Dictionary = GameState.get_quest(quest_id)
@@ -319,34 +374,34 @@ func _refresh_quests(_a = null, _b = null, _c = null) -> void:
 
 func _add_quest_row(title: String, desc: String, progress: Dictionary) -> void:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", 5)
 	_quest_list.add_child(row)
-	row.add_child(_label("★", 14, GOLD))
+	row.add_child(_label("★", 12, GOLD))
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 1)
 	row.add_child(col)
-	var t := _label(title, 12, Color.WHITE)
-	col.add_child(t)
-	var d := _label(desc, 10, Color(0.85, 0.80, 0.68))
+	col.add_child(_label(title, 11, TEXT_LIGHT))
+	var d := _label(desc, 9, TEXT_DIM)
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(d)
 	if not progress.is_empty():
-		col.add_child(_label("%d / %d" % [int(progress.get("current",0)), int(progress.get("target",1))], 10, GOLD))
+		col.add_child(_label("%d / %d" % [int(progress.get("current",0)), int(progress.get("target",1))], 9, GOLD))
 
 # ────────────────────────────────────────────────────────────────────────────
-# Bottom centre: hotbar (compact)
+# Bottom centre: hotbar (single floating strip)
 
 func _build_hotbar() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	var slot_w: int = 44
-	var sep: int = 4
-	var total_w: int = HOTBAR_TOOLS.size() * slot_w + (HOTBAR_TOOLS.size() - 1) * sep + 16
+	var slot_w: int = 40
+	var sep: int = 3
+	var total_w: int = HOTBAR_TOOLS.size() * slot_w + (HOTBAR_TOOLS.size() - 1) * sep + 12
 	panel.offset_left = -total_w / 2
 	panel.offset_right = total_w / 2
-	panel.offset_top = -64
-	panel.offset_bottom = -16
-	panel.add_theme_stylebox_override("panel", _dark_box(8, 4))
+	panel.offset_top = -56
+	panel.offset_bottom = -14
+	panel.add_theme_stylebox_override("panel", _floating_pill(12, 4))
 	add_child(panel)
 
 	var row := HBoxContainer.new()
@@ -355,24 +410,19 @@ func _build_hotbar() -> void:
 
 	for i in range(HOTBAR_TOOLS.size()):
 		var slot := PanelContainer.new()
-		slot.custom_minimum_size = Vector2(slot_w, 44)
+		slot.custom_minimum_size = Vector2(slot_w, 40)
 		slot.add_theme_stylebox_override("panel", _slot_box(false))
 		row.add_child(slot)
 		_hotbar_slots.append(slot)
 
-		var inner := VBoxContainer.new()
-		inner.alignment = BoxContainer.ALIGNMENT_CENTER
-		inner.add_theme_constant_override("separation", 0)
-		slot.add_child(inner)
-
-		var icon := _label(HOTBAR_TOOLS[i].label, 16, INK, true)
-		inner.add_child(icon)
-		var name := _label(HOTBAR_TOOLS[i].name, 8, INK_SOFT, true)
-		inner.add_child(name)
+		var icon := _label(HOTBAR_TOOLS[i].label, 14, INK, true)
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		slot.add_child(icon)
 
 		var num := Label.new()
 		num.text = HOTBAR_TOOLS[i].key
-		num.add_theme_font_size_override("font_size", 9)
+		num.add_theme_font_size_override("font_size", 8)
 		num.add_theme_color_override("font_color", BERRY)
 		num.position = Vector2(3, 1)
 		slot.add_child(num)
@@ -389,47 +439,17 @@ func _build_hotbar() -> void:
 		slot.add_child(count)
 		_hotbar_count_labels.append(count)
 
-func _build_inventory_strip() -> void:
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	panel.offset_left = -160
-	panel.offset_right = 160
-	panel.offset_top = -94
-	panel.offset_bottom = -68
-	panel.add_theme_stylebox_override("panel", _dark_box(6, 4))
-	add_child(panel)
-
-	_inventory_label = Label.new()
-	_inventory_label.add_theme_font_size_override("font_size", 11)
-	_inventory_label.add_theme_color_override("font_color", Color.WHITE)
-	_inventory_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(_inventory_label)
-	_refresh_inventory_strip()
-
-func _refresh_inventory_strip() -> void:
-	if _inventory_label == null:
-		return
-	var parts: Array[String] = []
-	for k in ["parsnip_seeds", "parsnip", "wood", "stone"]:
-		var n: int = GameState.item_count(k)
-		if n > 0:
-			parts.append("%s ×%d" % [_pretty(k), n])
-	_inventory_label.text = "  ·  ".join(parts) if parts.size() > 0 else "(empty)"
-
-func _pretty(item_id: String) -> String:
-	return item_id.capitalize().replace("_", " ")
-
 func _slot_box(selected: bool) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = PARCHMENT if not selected else Color(1.0, 0.94, 0.72)
-	sb.set_corner_radius_all(6)
+	sb.set_corner_radius_all(7)
 	sb.set_content_margin_all(2)
 	var bw: int = 2 if selected else 1
 	sb.border_width_left = bw
 	sb.border_width_right = bw
 	sb.border_width_top = bw
 	sb.border_width_bottom = bw
-	sb.border_color = GOLD if selected else BORDER
+	sb.border_color = GOLD if selected else Color(0.55, 0.40, 0.25, 0.5)
 	return sb
 
 func _select_hotbar(i: int) -> void:
@@ -439,71 +459,106 @@ func _select_hotbar(i: int) -> void:
 		_hotbar_slots[j].add_theme_stylebox_override("panel", _slot_box(j == i))
 
 # ────────────────────────────────────────────────────────────────────────────
-# Bottom right: side menu (smaller)
+# Bottom right: 5 round icon buttons (no big container)
 
 func _build_side_menu() -> void:
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	var btn_w: int = 56
-	var sep: int = 4
-	var total_w: int = SIDE_MENU.size() * btn_w + (SIDE_MENU.size() - 1) * sep + 16
-	panel.offset_left = -total_w
-	panel.offset_right = -12
-	panel.offset_top = -60
-	panel.offset_bottom = -12
-	panel.add_theme_stylebox_override("panel", _dark_box(8, 4))
-	add_child(panel)
+	var btn_d: int = 44
+	var sep: int = 6
+	var n: int = SIDE_MENU.size()
+	for i in range(n):
+		var btn := PanelContainer.new()
+		btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		btn.offset_right = -14 - (n - 1 - i) * (btn_d + sep)
+		btn.offset_left = btn.offset_right - btn_d
+		btn.offset_bottom = -16
+		btn.offset_top = btn.offset_bottom - btn_d
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = PANEL_BG
+		sb.set_corner_radius_all(btn_d / 2)
+		sb.border_width_left = 1
+		sb.border_width_right = 1
+		sb.border_width_top = 1
+		sb.border_width_bottom = 1
+		sb.border_color = PANEL_BORDER
+		sb.shadow_color = SHADOW
+		sb.shadow_size = 6
+		sb.shadow_offset = Vector2(0, 2)
+		btn.add_theme_stylebox_override("panel", sb)
+		add_child(btn)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", sep)
-	panel.add_child(row)
+		var icon := _label(SIDE_MENU[i].icon, 18, GOLD, true)
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon.offset_top = -4
+		btn.add_child(icon)
 
-	for entry in SIDE_MENU:
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(btn_w, 44)
-		btn.add_theme_font_size_override("font_size", 10)
-		btn.add_theme_color_override("font_color", INK)
-		btn.add_theme_stylebox_override("normal", _slot_box(false))
-		btn.add_theme_stylebox_override("hover", _slot_box(true))
-		btn.add_theme_stylebox_override("pressed", _slot_box(true))
-		btn.text = "%s\n[%s]" % [entry.label, entry.key]
-		row.add_child(btn)
+		# Tiny key hint below the icon
+		var key := _label("[%s]" % SIDE_MENU[i].key, 8, TEXT_DIM, true)
+		key.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		key.offset_top = -10
+		key.offset_bottom = -2
+		btn.add_child(key)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Bottom left: small chat / event log
+# Bottom left: small chat / event log (lighter chrome)
 
 func _build_chat_log() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.offset_left = 12
-	panel.offset_right = 12 + 240
-	panel.offset_top = -116
-	panel.offset_bottom = -12
-	panel.add_theme_stylebox_override("panel", _dark_box(8, 6))
+	panel.offset_left = 14
+	panel.offset_right = 14 + 240
+	panel.offset_top = -110
+	panel.offset_bottom = -14
+	panel.add_theme_stylebox_override("panel", _floating_pill(12, 8))
 	add_child(panel)
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 3)
 	panel.add_child(col)
-	col.add_child(_label("EVENT LOG", 9, GOLD))
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 4)
+	col.add_child(header)
+	header.add_child(_label("📜", 10, GOLD))
+	header.add_child(_label("EVENT LOG", 9, GOLD))
 	var sep := ColorRect.new()
-	sep.color = Color(1, 1, 1, 0.15)
+	sep.color = Color(1, 1, 1, 0.12)
 	sep.custom_minimum_size = Vector2(0, 1)
 	col.add_child(sep)
 
 	_add_log(col, "Wizard:", "Welcome to Greenfield Valley.", GOLD)
 	_add_log(col, "Mayor:", "Find the Inn Master at the farm.", LEAF)
-	_add_log(col, "Tip:", "Press 1-6 to switch tools, [E] to interact.", Color(0.8, 0.75, 0.6))
+	_add_log(col, "Tip:", "1-6 switch tools, [E] interact.", TEXT_DIM)
+
+	# Inventory mini-strip lives at the bottom of the log
+	_inventory_label = Label.new()
+	_inventory_label.add_theme_font_size_override("font_size", 9)
+	_inventory_label.add_theme_color_override("font_color", TEXT_DIM)
+	_inventory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(_inventory_label)
+	_refresh_inventory_strip()
 
 func _add_log(parent: Node, who: String, msg: String, who_color: Color) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 5)
 	parent.add_child(row)
 	row.add_child(_label(who, 10, who_color))
-	var m := _label(msg, 10, Color(0.92, 0.88, 0.76))
+	var m := _label(msg, 10, TEXT_LIGHT)
 	m.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	m.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(m)
+
+func _refresh_inventory_strip() -> void:
+	if _inventory_label == null:
+		return
+	var parts: Array[String] = []
+	for k in ["parsnip_seeds", "parsnip", "wood", "stone"]:
+		var n: int = GameState.item_count(k)
+		if n > 0:
+			parts.append("%s ×%d" % [_pretty(k), n])
+	_inventory_label.text = "🎒 " + ("  ·  ".join(parts) if parts.size() > 0 else "(empty)")
+
+func _pretty(item_id: String) -> String:
+	return item_id.capitalize().replace("_", " ")
 
 # ────────────────────────────────────────────────────────────────────────────
 # Signal handlers
