@@ -28,6 +28,32 @@ const SHOES      := Color(0.18, 0.12, 0.07)
 func _ready() -> void:
 	add_to_group("player")
 	_build_character()
+	GameState.hp_changed.connect(_on_hp_changed)
+
+var _last_hp: int = -1
+func _on_hp_changed(value: int, _max_val: int) -> void:
+	if _last_hp >= 0 and value < _last_hp:
+		var lost: int = _last_hp - value
+		DamageNumber.spawn(get_tree().current_scene,
+			global_position + Vector3(0, 1.8, 0),
+			"-%d" % lost, Color(1.0, 0.35, 0.35))
+		# Brief red flash on the body meshes
+		_flash_player_red()
+	_last_hp = value
+
+func _flash_player_red() -> void:
+	if _visual == null:
+		return
+	for child in _visual.get_children():
+		if child is MeshInstance3D:
+			var mi: MeshInstance3D = child
+			var mat: StandardMaterial3D = mi.material_override as StandardMaterial3D
+			if mat == null:
+				continue
+			var orig: Color = mat.albedo_color
+			mat.albedo_color = Color(1.0, 0.35, 0.35)
+			var tw := create_tween()
+			tw.tween_property(mat, "albedo_color", orig, 0.20)
 
 func _build_character() -> void:
 	# Legs
@@ -152,7 +178,9 @@ const SWORD_RANGE := 2.0
 const SWORD_DAMAGE := 20
 
 func _swing_sword() -> void:
-	# Need a sword in inventory to actually do damage.
+	# Visual swing arc fires regardless of having a sword (so the player gets
+	# feedback). Damage only applies if you actually have a sword.
+	_spawn_swing_arc()
 	if GameState.item_count("rusted_sword") <= 0:
 		return
 	var nearest: Node = null
@@ -174,3 +202,28 @@ func _swing_sword() -> void:
 	if kills >= 50:
 		GameState.remove_item("rusted_sword", 1)
 		GameState.set_meta("rusted_sword_kills", 0)
+
+# Quick white-arc flash in front of the player that fades over ~0.18s.
+func _spawn_swing_arc() -> void:
+	var arc := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(1.6, 0.04, 0.4)
+	arc.mesh = bm
+	# Position 1m in front of player, hip-high, oriented along facing
+	var ahead: Vector3 = global_position + Vector3(0, 1.0, 0) + _facing * 1.0
+	arc.global_position = ahead
+	arc.look_at(arc.global_position + _facing.cross(Vector3.UP).normalized(), Vector3.UP)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1, 1, 1, 0.95)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.95, 0.6)
+	mat.emission_energy_multiplier = 2.5
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	arc.material_override = mat
+	get_tree().current_scene.add_child(arc)
+	# Tween the alpha + scale, then free
+	var tw := arc.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(arc, "scale", Vector3(1.4, 1.0, 1.0), 0.18)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.18)
+	tw.chain().tween_callback(arc.queue_free)

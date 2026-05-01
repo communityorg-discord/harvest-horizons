@@ -125,11 +125,19 @@ func _strike_player() -> void:
 func take_damage(amount: int) -> void:
 	hp -= amount
 	_flash_t = 0.18
+	# Floating damage number above the slime
+	DamageNumber.spawn(get_tree().current_scene, global_position + Vector3(0, 1.0, 0),
+		"-%d" % amount, Color(1.0, 0.85, 0.4))
 	if hp <= 0:
 		_die()
 
 func _die() -> void:
-	# Tally a kill against the rusted sword (durability handled by player code).
 	if has_node("/root/GameState"):
 		GameState.set_meta("monster_kills", int(GameState.get_meta("monster_kills", 0)) + 1)
+	# Drop slime gel near the body (1-2 with light scatter)
+	var n := 1 + (randi() % 2)
+	for i in range(n):
+		var jitter := Vector3(randf_range(-0.4, 0.4), 0, randf_range(-0.4, 0.4))
+		ItemPickup.spawn(get_tree().current_scene, global_position + jitter,
+			"slime_gel", Color(0.42, 0.78, 0.32))
 	queue_free()

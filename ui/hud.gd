@@ -605,7 +605,7 @@ func _refresh_inventory_strip() -> void:
 	if _inventory_label == null:
 		return
 	var parts: Array[String] = []
-	for k in ["parsnip_seeds", "parsnip", "wood", "stone", "lantern", "rusted_sword"]:
+	for k in ["parsnip_seeds", "parsnip", "wood", "stone", "lantern", "rusted_sword", "slime_gel"]:
 		var n: int = GameState.item_count(k)
 		if n > 0:
 			parts.append("%s ×%d" % [_pretty(k), n])

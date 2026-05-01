@@ -7,9 +7,21 @@ extends Node3D
 
 @onready var sun: DirectionalLight3D = $Sun
 @onready var _player: CharacterBody3D = $Player
+@onready var _world_env: WorldEnvironment = $WorldEnvironment
 
 const SUNRISE := 6.0
 const SUNSET := 20.0
+
+# Sky palette — sky_top + sky_horizon at each time of day
+const SKY_NIGHT := { "top": Color(0.06, 0.08, 0.18), "horizon": Color(0.10, 0.12, 0.22) }
+const SKY_DAWN  := { "top": Color(0.55, 0.55, 0.78), "horizon": Color(1.00, 0.62, 0.42) }
+const SKY_DAY   := { "top": Color(0.30, 0.52, 0.78), "horizon": Color(0.92, 0.78, 0.62) }
+const SKY_DUSK  := { "top": Color(0.32, 0.22, 0.45), "horizon": Color(0.95, 0.42, 0.30) }
+
+const SUN_COLOR_DAY  := Color(1.00, 0.95, 0.85)
+const SUN_COLOR_DAWN := Color(1.00, 0.78, 0.55)
+const SUN_COLOR_DUSK := Color(1.00, 0.55, 0.35)
+const SUN_COLOR_NIGHT:= Color(0.40, 0.50, 0.78)
 const VISITOR_HOUR := 19  # 7 PM trigger
 const PICKUP_SCRIPT := preload("res://scripts/lantern_pickup.gd")
 const SOCKET_SCRIPT := preload("res://scripts/lantern_socket.gd")
@@ -55,6 +67,8 @@ func _process(delta: float) -> void:
 		energy = sin(day_progress * PI) * 1.3 + 0.1
 	sun.light_energy = energy
 
+	_update_sky_palette(t)
+
 	# Monster spawning + despawning, checked every 1.5s
 	_spawn_check_t -= delta
 	if _spawn_check_t <= 0.0:
@@ -63,6 +77,49 @@ func _process(delta: float) -> void:
 			_spawn_monster()
 		else:
 			_despawn_monsters()
+
+func _update_sky_palette(t: float) -> void:
+	# Build top + horizon + sun_color from a 24-hour cycle.
+	var top: Color
+	var horizon: Color
+	var sun_col: Color
+	if t < 5.0:
+		top = SKY_NIGHT.top; horizon = SKY_NIGHT.horizon; sun_col = SUN_COLOR_NIGHT
+	elif t < 7.0:
+		var f := (t - 5.0) / 2.0
+		top = SKY_NIGHT.top.lerp(SKY_DAWN.top, f)
+		horizon = SKY_NIGHT.horizon.lerp(SKY_DAWN.horizon, f)
+		sun_col = SUN_COLOR_NIGHT.lerp(SUN_COLOR_DAWN, f)
+	elif t < 9.0:
+		var f := (t - 7.0) / 2.0
+		top = SKY_DAWN.top.lerp(SKY_DAY.top, f)
+		horizon = SKY_DAWN.horizon.lerp(SKY_DAY.horizon, f)
+		sun_col = SUN_COLOR_DAWN.lerp(SUN_COLOR_DAY, f)
+	elif t < 17.0:
+		top = SKY_DAY.top; horizon = SKY_DAY.horizon; sun_col = SUN_COLOR_DAY
+	elif t < 20.0:
+		var f := (t - 17.0) / 3.0
+		top = SKY_DAY.top.lerp(SKY_DUSK.top, f)
+		horizon = SKY_DAY.horizon.lerp(SKY_DUSK.horizon, f)
+		sun_col = SUN_COLOR_DAY.lerp(SUN_COLOR_DUSK, f)
+	elif t < 22.0:
+		var f := (t - 20.0) / 2.0
+		top = SKY_DUSK.top.lerp(SKY_NIGHT.top, f)
+		horizon = SKY_DUSK.horizon.lerp(SKY_NIGHT.horizon, f)
+		sun_col = SUN_COLOR_DUSK.lerp(SUN_COLOR_NIGHT, f)
+	else:
+		top = SKY_NIGHT.top; horizon = SKY_NIGHT.horizon; sun_col = SUN_COLOR_NIGHT
+
+	if _world_env != null and _world_env.environment != null:
+		var sky: Sky = _world_env.environment.sky
+		if sky != null:
+			var mat: ProceduralSkyMaterial = sky.sky_material as ProceduralSkyMaterial
+			if mat != null:
+				mat.sky_top_color = top
+				mat.sky_horizon_color = horizon
+		# Pull the ambient warmth toward the horizon colour
+		_world_env.environment.ambient_light_color = horizon.lerp(top, 0.4)
+	sun.light_color = sun_col
 
 # ────────────────────────────────────────────────────────────────────────────
 # Inn Master arrival intro
