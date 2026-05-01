@@ -70,4 +70,5 @@ func _play_inn_intro(npc: NPC) -> void:
 
 func _on_inn_master_done() -> void:
 	GameState.complete_quest("intro_inn")
+	GameState.start_quest("first_harvest")
 	GameState.save_game()

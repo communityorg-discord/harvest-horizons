@@ -35,9 +35,14 @@ var time_speed: float = 2.0  # game-minutes per real-second (1 day ≈ 12 real m
 var money: int = 1250
 var weather: int = Weather.SUNNY
 var rank: int = Rank.NEW_ARRIVAL
-var quest_flags: Dictionary = {}
+var quest_flags: Dictionary = {}    # completed quest ids → true
+var active_quests: Array = []       # quest ids currently in the Quest Book
+var quest_progress: Dictionary = {} # quest_id → {"current": int, "target": int}
 var current_tool: int = 0
 var inventory: Dictionary = {"parsnip_seeds": 8, "parsnip": 0, "wood": 0, "stone": 0}
+
+# Static catalog loaded from data/quests.json on _ready. Read-only after load.
+var quest_catalog: Dictionary = {}
 
 var max_hp: int = 100
 var hp: int = 100
@@ -69,13 +74,29 @@ signal hp_changed(hp: int, max_hp: int)
 signal energy_changed(energy: int, max_energy: int)
 signal slept(wake_hour: int)
 signal passed_out()
+signal quest_started(quest_id: String)
+signal quest_progress_changed(quest_id: String, current: int, target: int)
 
 # ─── Tick ──────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	_load_quest_catalog()
 	# Auto-load save on first launch (if present).
 	if FileAccess.file_exists(SAVE_PATH):
 		load_game()
+
+func _load_quest_catalog() -> void:
+	const PATH := "res://data/quests.json"
+	if not FileAccess.file_exists(PATH):
+		return
+	var f := FileAccess.open(PATH, FileAccess.READ)
+	if f == null:
+		return
+	var raw := f.get_as_text()
+	f.close()
+	var parsed: Variant = JSON.parse_string(raw)
+	if parsed is Dictionary:
+		quest_catalog = (parsed as Dictionary).get("quests", {}) as Dictionary
 
 func _process(delta: float) -> void:
 	var prev_minute := int(minute)
@@ -258,10 +279,38 @@ func complete_quest(quest_id: String) -> void:
 	if quest_flags.has(quest_id):
 		return
 	quest_flags[quest_id] = true
+	if quest_id in active_quests:
+		active_quests.erase(quest_id)
+	# Apply rewards from the catalog (money for now; rank promotion if defined).
+	var data: Dictionary = quest_catalog.get(quest_id, {})
+	var rewards: Dictionary = data.get("rewards", {})
+	if rewards.has("money"):
+		add_money(int(rewards["money"]))
+	if data.has("promotes_to"):
+		promote_to(int(data["promotes_to"]))
 	quest_completed.emit(quest_id)
 
 func has_completed(quest_id: String) -> bool:
 	return quest_flags.has(quest_id)
+
+func start_quest(quest_id: String, target: int = 1) -> void:
+	if quest_id in active_quests or quest_flags.has(quest_id):
+		return
+	active_quests.append(quest_id)
+	quest_progress[quest_id] = {"current": 0, "target": target}
+	quest_started.emit(quest_id)
+
+func set_quest_progress(quest_id: String, current: int) -> void:
+	if not quest_progress.has(quest_id):
+		return
+	var p: Dictionary = quest_progress[quest_id]
+	p["current"] = current
+	quest_progress_changed.emit(quest_id, current, int(p.get("target", 1)))
+	if current >= int(p.get("target", 1)):
+		complete_quest(quest_id)
+
+func get_quest(quest_id: String) -> Dictionary:
+	return quest_catalog.get(quest_id, {})
 
 func set_current_tool(index: int) -> void:
 	if index == current_tool:

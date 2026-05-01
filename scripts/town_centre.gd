@@ -83,6 +83,7 @@ func _play_immediately(npc: Node) -> void:
 
 func _on_mayor_done() -> void:
 	GameState.complete_quest("intro_mayor")
+	GameState.complete_quest("wizard_letter")  # the seeded opening quest
 
 func _mat(color: Color, rough: float = 0.9) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
