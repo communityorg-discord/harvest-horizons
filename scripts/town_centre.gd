@@ -336,8 +336,8 @@ func _build_perimeter_walls() -> void:
 	_add_collider(Vector3(x_min - 0.5, wall_h * 0.5, (gap_bot + z_max) * 0.5 + 1.0), Vector3(wall_t, wall_h, west_bot_len))
 
 func _perimeter_tree(rng: RandomNumberGenerator, base: Vector3) -> void:
-	var paths := ["tree_pineTallA.glb", "tree_pineDefaultA.glb", "tree_pineDefaultB.glb", "tree_oak.glb"]
-	var path := NATURE + paths[rng.randi() % paths.size()]
+	var paths: Array[String] = ["tree_pineTallA.glb", "tree_pineDefaultA.glb", "tree_pineDefaultB.glb", "tree_oak.glb"]
+	var path: String = NATURE + paths[rng.randi() % paths.size()]
 	var packed: PackedScene = load(path)
 	if packed == null:
 		return
