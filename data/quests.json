@@ -20,6 +20,12 @@
       "promotes_to": 0,
       "rewards": { "money": 150 }
     },
+    "build_fence": {
+      "title": "Build a Fence",
+      "description": "A storm is coming. Buy 8 fence panels from Gus at the General Store before nightfall.",
+      "promotes_to": 0,
+      "rewards": { "money": 250 }
+    },
     "help_blacksmith": {
       "title": "A Smith in Need",
       "description": "Bring the Blacksmith 5 stone and 5 wood.",

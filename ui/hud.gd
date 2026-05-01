@@ -45,9 +45,12 @@ const QUEST_ICON := {
 	"wizard_letter":  "✉",
 	"first_harvest":  "🌱",
 	"light_the_farm": "🏮",
+	"build_fence":    "🪵",
 	"help_blacksmith":"🔨",
 	"repair_bridge":  "🌉",
 }
+
+const WEATHER_ICONS := ["☀", "☁", "🌧", "⛈", "🌬", "🌫", "❄", "🔥"]
 
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -632,6 +635,12 @@ func _on_day(day: int, _month: int, year: int) -> void:
 
 func _on_weather(_w: int) -> void:
 	_weather_label.text = GameState.weather_name()
+	# Update the icon next to the weather value too
+	if _weather_label.get_parent() is HBoxContainer:
+		var inner: HBoxContainer = _weather_label.get_parent()
+		if inner.get_child_count() > 0 and inner.get_child(0) is Label:
+			var idx: int = clampi(GameState.weather, 0, WEATHER_ICONS.size() - 1)
+			(inner.get_child(0) as Label).text = WEATHER_ICONS[idx]
 
 func _on_rank(_r: int) -> void:
 	pass

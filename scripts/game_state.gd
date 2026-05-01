@@ -2,7 +2,7 @@ extends Node
 ## Global singleton: time, money, weather, HP/Energy, save/load, sleep system.
 ## Anything that needs to survive across scenes lives here.
 
-enum Weather { SUNNY, RAINY, FOGGY, STORMY }
+enum Weather { SUNNY, CLOUDY, RAINY, STORMY, WINDY, FOGGY, SNOWY, HOT }
 enum Rank { NEW_ARRIVAL, LOCAL_HELPER, TRUSTED_FARMER, TOWN_RESTORER, VALLEY_HERO, CHOSEN_GUARDIAN }
 
 const RANK_NAMES := [
@@ -123,6 +123,8 @@ func _advance_day() -> void:
 			month = 1
 			year += 1
 	day_changed.emit(day, month, year)
+	# Roll the new day's weather
+	set_weather(roll_weather_for_today())
 
 # ─── Sleep / pass-out ──────────────────────────────────────────────────────
 
@@ -265,7 +267,38 @@ func get_season() -> String:
 	return "Spring"
 
 func weather_name() -> String:
-	return ["Sunny", "Rainy", "Foggy", "Stormy"][weather]
+	return ["Sunny", "Cloudy", "Rainy", "Stormy", "Windy", "Foggy", "Snowy", "Hot"][weather]
+
+# ─── Daily weather rolling ─────────────────────────────────────────────────
+# Spring 1-3 are tutorial sunny days. Spring 4 forces a Storm (mayor knocks).
+# After that, weather is rolled per season per docs/DESIGN.md.
+
+func roll_weather_for_today() -> int:
+	# Tutorial first 3 days
+	if year == 1 and month == 1 and day <= 3:
+		return Weather.SUNNY
+	# Day 4 of Spring Year 1 — the storm event
+	if year == 1 and month == 1 and day == 4:
+		return Weather.STORMY
+	# Per-season weighted roll (very rough — designers can tune later)
+	var allowed: Array[int] = _allowed_weather_for_season()
+	return allowed[randi() % allowed.size()]
+
+func _allowed_weather_for_season() -> Array[int]:
+	# Snow only in winter + first/last 15 days of Spring/Autumn
+	var snow_ok := (month == 4) or (month == 1 and day <= 15) or (month == 3 and day > 13)
+	# Hot only in summer
+	var hot_ok := (month == 2)
+	var pool: Array[int] = [Weather.SUNNY, Weather.SUNNY, Weather.CLOUDY, Weather.RAINY, Weather.WINDY, Weather.FOGGY]
+	if snow_ok:
+		pool.append(Weather.SNOWY)
+	if hot_ok:
+		pool.append(Weather.HOT)
+		pool.append(Weather.HOT)
+	# Storms occasionally
+	if randi() % 12 == 0:
+		pool.append(Weather.STORMY)
+	return pool
 
 func rank_name() -> String:
 	return RANK_NAMES[rank]

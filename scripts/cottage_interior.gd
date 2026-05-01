@@ -20,6 +20,50 @@ func _ready() -> void:
 	if GameState.next_spawn == "bed_side":
 		_player.global_position = BEDSIDE_POS
 		GameState.next_spawn = ""
+	_check_storm_warning()
+
+# On the morning of Day 4, the mayor knocks at the door with a storm warning.
+func _check_storm_warning() -> void:
+	if GameState.year != 1 or GameState.month != 1 or GameState.day != 4:
+		return
+	if GameState.has_completed("storm_warning"):
+		return
+	if int(GameState.hour) > 9:
+		return  # only fires in the morning
+	GameState.complete_quest("storm_warning")
+	# Spawn the Mayor inside the cottage near the door
+	var npc := NPC.new()
+	npc.npc_name = "Mayor Victor"
+	npc.shirt_color = Color(0.32, 0.22, 0.45)
+	npc.hat_color   = Color(0.18, 0.10, 0.06)
+	npc.hair_color  = Color(0.85, 0.85, 0.85)
+	npc.position = Vector3(0, 0, 3.0)  # near south door
+	npc.lines = [
+		{"speaker": "Mayor Victor", "text": "*KNOCK KNOCK*  …Farmer?  Are you up?  Sorry to barge in.", "color": Color(0.55, 0.32, 0.62)},
+		{"speaker": "Mayor Victor", "text": "There's a STORM coming.  Big one — by tonight.  Any crops out in the open will get torn to shreds.", "color": Color(0.55, 0.32, 0.62)},
+		{"speaker": "Mayor Victor", "text": "Get yourself fence panels.  Either chop wood and have Thomas at the Blacksmith craft them, or just buy them straight from Gus at the General Store.", "color": Color(0.55, 0.32, 0.62)},
+		{"speaker": "Mayor Victor", "text": "8 panels should cover your starter patch.  And do it BEFORE nightfall — Gus charges DOUBLE when folks panic.", "color": Color(0.55, 0.32, 0.62)},
+		{"speaker": "You", "text": "I'll head out right now.", "color": Color(0.20, 0.45, 0.65)},
+		{"speaker": "Mayor Victor", "text": "Good lad.  Stay indoors during the storm itself — and lock that door.", "color": Color(0.55, 0.32, 0.62)},
+	]
+	add_child(npc)
+	npc.dialogue_finished.connect(_on_storm_warning_done.bind(npc))
+	call_deferred("_play_storm_dialogue", npc)
+
+func _play_storm_dialogue(npc: NPC) -> void:
+	var box := find_child("DialogueBox", true, false)
+	if box == null or npc.lines.is_empty():
+		return
+	box.show_lines(npc.lines)
+	if not box.finished.is_connected(npc._on_dialogue_finished):
+		box.finished.connect(npc._on_dialogue_finished, CONNECT_ONE_SHOT)
+
+func _on_storm_warning_done(npc: NPC) -> void:
+	GameState.start_quest("build_fence", 8)
+	GameState.save_game()
+	await get_tree().create_timer(2.0).timeout
+	if is_instance_valid(npc):
+		npc.queue_free()
 
 func _build_room() -> void:
 	# Floor (planked wood)
