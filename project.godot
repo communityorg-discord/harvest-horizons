@@ -8,7 +8,7 @@ config_version=5
 
 config/name="Harvest & Horizons"
 config/description="Cozy 2.5D farming + adventure prototype."
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/bootstrap.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 
 [autoload]

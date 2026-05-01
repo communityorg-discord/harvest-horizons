@@ -18,6 +18,8 @@ const WOOD       := Color(0.52, 0.36, 0.22)
 const WHITE_WALL := Color(0.92, 0.88, 0.78)
 const SIGN_BG    := Color(0.78, 0.62, 0.42)
 
+@onready var _player: CharacterBody3D = $Player
+
 func _ready() -> void:
 	_build_ground()
 	_build_plaza()
@@ -30,6 +32,57 @@ func _ready() -> void:
 	_scatter_lampposts()
 	_scatter_decor()
 	_build_return_gate()
+	_build_mayor()
+	_handle_intro()
+
+func _build_mayor() -> void:
+	var npc := NPC.new()
+	npc.npc_name = "Mayor Victor"
+	npc.shirt_color = Color(0.32, 0.22, 0.45)  # formal purple
+	npc.hat_color   = Color(0.18, 0.10, 0.06)  # top-hat-ish
+	npc.hair_color  = Color(0.85, 0.85, 0.85)  # silver
+	npc.position = Vector3(0, 0, 5)            # south of fountain, faces player
+	npc.lines = [
+		{"speaker": "Mayor Victor", "text": "Wait — what?  A visitor?  We haven't had a soul come through Greenfield in years.", "color": Color(0.55, 0.32, 0.62)},
+		{"speaker": "Mayor Victor", "text": "Who are you, and what brings you to our valley?", "color": Color(0.55, 0.32, 0.62)},
+		{"speaker": "You", "text": "I got a letter — from the Wizard.  He asked me to restore the old farm and help rebuild the town.", "color": Color(0.20, 0.45, 0.65)},
+		{"speaker": "Mayor Victor", "text": "The WIZARD?!  He's still alive?  We haven't seen him since the great… flood.", "color": Color(0.55, 0.32, 0.62)},
+		{"speaker": "Mayor Victor", "text": "Well.  This changes everything.  Head west out of the plaza — that path leads to the old farm.  The Inn Master Lily said she'd meet you when you arrived.", "color": Color(0.55, 0.32, 0.62)},
+		{"speaker": "Mayor Victor", "text": "Take this minimap.  You'll need it.  Welcome to Greenfield Valley, farmer.", "color": Color(0.55, 0.32, 0.62)},
+	]
+	add_child(npc)
+	npc.dialogue_finished.connect(_on_mayor_done)
+
+func _handle_intro() -> void:
+	if not GameState.has_meta("intro_pending"):
+		return
+	if GameState.get_meta("intro_pending") != "town_mayor":
+		return
+	GameState.remove_meta("intro_pending")
+	# Position the player just south of the Mayor so the dialogue flows.
+	if _player != null:
+		_player.global_position = Vector3(0, 1, 8)
+	# Find the Mayor NPC and play its dialogue immediately.
+	var mayor := _find_npc("Mayor Victor")
+	if mayor != null:
+		_play_immediately(mayor)
+
+func _find_npc(npc_name: String) -> Node:
+	for child in get_children():
+		if child is NPC and (child as NPC).npc_name == npc_name:
+			return child
+	return null
+
+func _play_immediately(npc: Node) -> void:
+	var box := find_child("DialogueBox", true, false)
+	if box == null or npc.lines.is_empty():
+		return
+	box.show_lines(npc.lines)
+	if not box.finished.is_connected(npc._on_dialogue_finished):
+		box.finished.connect(npc._on_dialogue_finished, CONNECT_ONE_SHOT)
+
+func _on_mayor_done() -> void:
+	GameState.complete_quest("intro_mayor")
 
 func _mat(color: Color, rough: float = 0.9) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -69,6 +122,8 @@ func _build_ground() -> void:
 	ground.mesh = pm
 	ground.material_override = _mat(Color(0.30, 0.48, 0.22), 0.95)
 	add_child(ground)
+	# Static collider so the player doesn't fall through
+	_add_collider(Vector3(0, -0.1, 0), Vector3(60, 0.2, 60))
 
 func _build_plaza() -> void:
 	# Cobble plaza centre, 12x12, made from many small tiles for visual rhythm

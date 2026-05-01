@@ -10,10 +10,10 @@ const RANK_NAMES := [
 	"Town Restorer", "Valley Hero", "Chosen Guardian"
 ]
 
-const MONTH_NAMES := [
-	"", "January", "February", "March", "April", "May", "June",
-	"July", "August", "September", "October", "November", "December"
-]
+# Calendar: 4 seasons × 28 days = 112-day year. month is 1..4 (Spring..Winter).
+const SEASON_NAMES := ["", "Spring", "Summer", "Autumn", "Winter"]
+const SEASONS_PER_YEAR := 4
+const DAYS_PER_SEASON := 28
 
 const SAVE_PATH := "user://save.json"
 
@@ -25,9 +25,9 @@ const NORMAL_WAKE := 5.0         # default wake time
 
 # ─── State ─────────────────────────────────────────────────────────────────
 
-var day: int = 12
-var month: int = 3
-var year: int = 2
+var day: int = 1
+var month: int = 1  # 1=Spring, 2=Summer, 3=Autumn, 4=Winter
+var year: int = 1
 var hour: float = 9.0
 var minute: float = 30.0
 var time_speed: float = 2.0  # game-minutes per real-second (1 day ≈ 12 real min)
@@ -50,6 +50,10 @@ var has_slept_today: bool = true  # start "true" so the first day doesn't pass-o
 # Where to spawn the player on next scene load. "" = default scene spawn.
 # "bed_side" = next to the cottage bed marker (used after sleep + pass-out).
 var next_spawn: String = ""
+
+# True until a save is loaded. Used by the bootstrap router to send the
+# player to the Town Centre intro instead of the farm on first launch.
+var is_new_game: bool = true
 
 # ─── Signals ───────────────────────────────────────────────────────────────
 
@@ -91,10 +95,10 @@ func _process(delta: float) -> void:
 func _advance_day() -> void:
 	day += 1
 	has_slept_today = false  # reset for the new day
-	if day > 28:
+	if day > DAYS_PER_SEASON:
 		day = 1
 		month += 1
-		if month > 12:
+		if month > SEASONS_PER_YEAR:
 			month = 1
 			year += 1
 	day_changed.emit(day, month, year)
@@ -184,6 +188,7 @@ func load_game() -> bool:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if f == null:
 		return false
+	is_new_game = false
 	var raw: String = f.get_as_text()
 	f.close()
 	var parsed: Variant = JSON.parse_string(raw)
@@ -234,11 +239,8 @@ func set_weather(w: int) -> void:
 	weather_changed.emit(weather)
 
 func get_season() -> String:
-	match month:
-		1, 2, 12: return "Winter"
-		3, 4, 5: return "Spring"
-		6, 7, 8: return "Summer"
-		9, 10, 11: return "Autumn"
+	if month >= 1 and month <= SEASONS_PER_YEAR:
+		return SEASON_NAMES[month]
 	return "Spring"
 
 func weather_name() -> String:

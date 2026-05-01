@@ -23,15 +23,24 @@ func _ready() -> void:
 
 func _build_room() -> void:
 	# Floor (planked wood)
-	var floor := MeshInstance3D.new()
+	var floor_node := MeshInstance3D.new()
 	var fm := PlaneMesh.new()
 	fm.size = Vector2(10, 8)
-	floor.mesh = fm
+	floor_node.mesh = fm
 	var fmat := StandardMaterial3D.new()
 	fmat.albedo_color = Color(0.50, 0.34, 0.20)
 	fmat.roughness = 0.85
-	floor.material_override = fmat
-	add_child(floor)
+	floor_node.material_override = fmat
+	add_child(floor_node)
+	# Floor collider so the player can actually stand on the floor
+	var body := StaticBody3D.new()
+	body.position = Vector3(0, -0.1, 0)
+	add_child(body)
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(10, 0.2, 8)
+	col.shape = shape
+	body.add_child(col)
 
 	# Walls — 4 sides + collision
 	_wall(Vector3(0, 1.5, -4), Vector3(10, 3, 0.2), Color(0.78, 0.66, 0.48))   # north
