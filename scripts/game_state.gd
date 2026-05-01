@@ -34,6 +34,10 @@ var time_speed: float = 2.0  # game-minutes per real-second (1 day ≈ 12 real m
 
 var money: int = 1250
 var weather: int = Weather.SUNNY
+# Today's weather schedule: array of {hour: float, weather: int} entries
+# sorted by hour. The latest entry whose hour <= current hour is the active
+# weather. Generated daily, deterministic per (year, month, day).
+var weather_schedule: Array = []
 var rank: int = Rank.NEW_ARRIVAL
 var quest_flags: Dictionary = {}    # completed quest ids → true
 var active_quests: Array = []       # quest ids currently in the Quest Book
@@ -84,6 +88,10 @@ func _ready() -> void:
 	# Auto-load save on first launch (if present).
 	if FileAccess.file_exists(SAVE_PATH):
 		load_game()
+	# Make sure today has a schedule even on a fresh game with no save
+	if weather_schedule.is_empty():
+		weather_schedule = roll_weather_schedule_for_today()
+		_apply_scheduled_weather(true)
 
 func _load_quest_catalog() -> void:
 	const PATH := "res://data/quests.json"
@@ -109,6 +117,8 @@ func _process(delta: float) -> void:
 			_advance_day()
 	if int(minute) != prev_minute:
 		time_changed.emit(int(hour), int(minute))
+		# Check whether weather should switch to a new schedule window
+		_apply_scheduled_weather(false)
 		# Check pass-out: if we've crossed into 3 AM and still haven't slept.
 		if not has_slept_today and hour >= PASS_OUT_HOUR and hour < NORMAL_WAKE:
 			pass_out()
@@ -123,8 +133,9 @@ func _advance_day() -> void:
 			month = 1
 			year += 1
 	day_changed.emit(day, month, year)
-	# Roll the new day's weather
-	set_weather(roll_weather_for_today())
+	# Roll today's full weather schedule and apply the first window
+	weather_schedule = roll_weather_schedule_for_today()
+	_apply_scheduled_weather(true)
 
 # ─── Sleep / pass-out ──────────────────────────────────────────────────────
 
@@ -196,6 +207,7 @@ func save_game() -> bool:
 		"inventory": inventory,
 		"hp": hp, "energy": energy, "max_hp": max_hp, "max_energy": max_energy,
 		"has_slept_today": has_slept_today,
+		"weather_schedule": weather_schedule,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f == null:
@@ -235,6 +247,9 @@ func load_game() -> bool:
 	energy = int(d.get("energy", energy))
 	max_energy = int(d.get("max_energy", max_energy))
 	has_slept_today = bool(d.get("has_slept_today", has_slept_today))
+	weather_schedule = d.get("weather_schedule", []) as Array
+	if weather_schedule.is_empty():
+		weather_schedule = roll_weather_schedule_for_today()
 	# Re-emit signals so any listeners refresh.
 	time_changed.emit(int(hour), int(minute))
 	day_changed.emit(day, month, year)
@@ -274,15 +289,70 @@ func weather_name() -> String:
 # After that, weather is rolled per season per docs/DESIGN.md.
 
 func roll_weather_for_today() -> int:
-	# Tutorial first 3 days
-	if year == 1 and month == 1 and day <= 3:
+	var sched := roll_weather_schedule_for_today()
+	if sched.is_empty():
 		return Weather.SUNNY
-	# Day 4 of Spring Year 1 — the storm event
+	return int(sched[0].weather)
+
+# Generate today's full schedule: array of {hour, weather} entries.
+# Deterministic per (year, month, day) so save/reload doesn't change weather.
+func roll_weather_schedule_for_today() -> Array:
+	# Tutorial first 3 days — sunny all day
+	if year == 1 and month == 1 and day <= 3:
+		return [{"hour": 0.0, "weather": Weather.SUNNY}]
+	# Day 4 — the storm cinematic, locked all day
 	if year == 1 and month == 1 and day == 4:
-		return Weather.STORMY
-	# Per-season weighted roll (very rough — designers can tune later)
-	var allowed: Array[int] = _allowed_weather_for_season()
-	return allowed[randi() % allowed.size()]
+		return [{"hour": 0.0, "weather": Weather.STORMY}]
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = year * 1_000_000 + month * 10_000 + day * 100
+
+	var pool := _allowed_weather_for_season()
+	# 3 windows: morning (5 AM), afternoon (12 PM), evening (6 PM).
+	# Pick adjacent weather sensibly so storms don't snap to sunny.
+	var morning: int = pool[rng.randi() % pool.size()]
+	var afternoon: int = _adjacent_weather(rng, morning, pool)
+	var evening: int = _adjacent_weather(rng, afternoon, pool)
+	return [
+		{"hour": 5.0,  "weather": morning},
+		{"hour": 12.0, "weather": afternoon},
+		{"hour": 18.0, "weather": evening},
+	]
+
+# Pick a coherent next-window weather from `prev`. Storms cool off into rain
+# or cloud rather than jumping straight to sun, etc.
+func _adjacent_weather(rng: RandomNumberGenerator, prev: int, pool: Array[int]) -> int:
+	var allowed: Array[int]
+	match prev:
+		Weather.STORMY:  allowed = [Weather.STORMY, Weather.RAINY, Weather.CLOUDY]
+		Weather.RAINY:   allowed = [Weather.RAINY, Weather.CLOUDY, Weather.SUNNY, Weather.WINDY]
+		Weather.SNOWY:   allowed = [Weather.SNOWY, Weather.CLOUDY, Weather.WINDY]
+		Weather.HOT:     allowed = [Weather.HOT, Weather.SUNNY]
+		Weather.FOGGY:   allowed = [Weather.FOGGY, Weather.CLOUDY, Weather.SUNNY]
+		_:               allowed = pool.duplicate()
+	# Intersect with the season pool to avoid out-of-season picks
+	var filtered: Array[int] = []
+	for w in allowed:
+		if w in pool:
+			filtered.append(w)
+	if filtered.is_empty():
+		filtered = pool
+	return filtered[rng.randi() % filtered.size()]
+
+# Look up the active window in the schedule and apply it. If `force` is
+# true, always emits the weather signal (used after re-rolling on day change).
+func _apply_scheduled_weather(force: bool = false) -> void:
+	if weather_schedule.is_empty():
+		return
+	var t: float = float(hour) + float(minute) / 60.0
+	var target: int = int(weather_schedule[0].weather)
+	for entry in weather_schedule:
+		if t >= float(entry.hour):
+			target = int(entry.weather)
+		else:
+			break
+	if force or target != weather:
+		set_weather(target)
 
 func _allowed_weather_for_season() -> Array[int]:
 	# Snow only in winter + first/last 15 days of Spring/Autumn
