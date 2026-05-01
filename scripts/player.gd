@@ -1,88 +1,143 @@
-extends CharacterBody2D
-## 2D pixel-art farmer. WASD movement, plays directional walk/idle animations
-## from the Sprout Lands character spritesheet (4 dirs × 4 frames each).
+extends CharacterBody3D
+## Top-down WASD movement + procedurally built stylized character.
+## Pressing `use_tool` (E or Space) applies the currently selected hotbar tool
+## to the soil tile in front of the player.
 
-@export var speed: float = 80.0  # pixels per second (in world space, before camera zoom)
+@export var speed: float = 6.0
+@export var gravity: float = 18.0
 @export var farm_grid_path: NodePath
+@export var rotate_speed: float = 12.0
 
-@onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var _farm_grid: Node = get_node_or_null(farm_grid_path)
+@onready var _visual: Node3D = $Visual
 
-const CHAR := "res://assets/sprites/character/"
-const DIRS := ["DOWN", "LEFT", "RIGHT", "UP"]
+var _facing: Vector3 = Vector3.BACK  # face the camera at start
+var _bob_t: float = 0.0
 
-var _facing: String = "DOWN"
+# ────────────────────────────────────────────────────────────────────────────
+# Character build (procedural)
+
+const SKIN       := Color(0.97, 0.83, 0.70)
+const HAIR       := Color(0.42, 0.27, 0.16)
+const HAT_STRAW  := Color(0.93, 0.78, 0.42)
+const HAT_BAND   := Color(0.62, 0.32, 0.22)
+const SHIRT      := Color(0.18, 0.42, 0.65)
+const PANTS      := Color(0.32, 0.22, 0.14)
+const SHOES      := Color(0.18, 0.12, 0.07)
 
 func _ready() -> void:
-	_sprite.sprite_frames = _build_sprite_frames()
-	_sprite.play("idle_DOWN")
+	_build_character()
 
-func _build_sprite_frames() -> SpriteFrames:
-	var sf := SpriteFrames.new()
-	for dir in DIRS:
-		var walk_anim := "walk_%s" % dir
-		var idle_anim := "idle_%s" % dir
-		sf.add_animation(walk_anim)
-		sf.add_animation(idle_anim)
-		sf.set_animation_speed(walk_anim, 8.0)
-		sf.set_animation_speed(idle_anim, 2.0)
-		sf.set_animation_loop(walk_anim, true)
-		sf.set_animation_loop(idle_anim, true)
-		for i in range(1, 5):
-			var path := "%sBasic_Charakter_Spritesheet_%s_%d.png" % [CHAR, dir, i]
-			var tex: Texture2D = load(path)
-			if tex == null:
-				push_warning("Missing character frame: %s" % path)
-				continue
-			sf.add_frame(walk_anim, tex)
-		# Idle uses just frame 1 of each direction (a still pose).
-		var idle_tex: Texture2D = load("%sBasic_Charakter_Spritesheet_%s_1.png" % [CHAR, dir])
-		if idle_tex != null:
-			sf.add_frame(idle_anim, idle_tex)
-	# Remove the default empty animation
-	if sf.has_animation("default"):
-		sf.remove_animation("default")
-	return sf
+func _build_character() -> void:
+	# Legs
+	_add_box(_visual, Vector3(-0.13, 0.30, 0), Vector3(0.18, 0.55, 0.18), PANTS)
+	_add_box(_visual, Vector3( 0.13, 0.30, 0), Vector3(0.18, 0.55, 0.18), PANTS)
+	# Shoes
+	_add_box(_visual, Vector3(-0.13, 0.045, 0.04), Vector3(0.20, 0.10, 0.26), SHOES)
+	_add_box(_visual, Vector3( 0.13, 0.045, 0.04), Vector3(0.20, 0.10, 0.26), SHOES)
+	# Body
+	_add_box(_visual, Vector3(0, 0.85, 0), Vector3(0.55, 0.55, 0.36), SHIRT)
+	# Arms (slightly forward + outward)
+	_add_box(_visual, Vector3(-0.36, 0.85, 0), Vector3(0.16, 0.55, 0.20), SHIRT)
+	_add_box(_visual, Vector3( 0.36, 0.85, 0), Vector3(0.16, 0.55, 0.20), SHIRT)
+	# Hands
+	_add_sphere(_visual, Vector3(-0.36, 0.55, 0), 0.10, SKIN)
+	_add_sphere(_visual, Vector3( 0.36, 0.55, 0), 0.10, SKIN)
+	# Head
+	_add_sphere(_visual, Vector3(0, 1.30, 0), 0.27, SKIN)
+	# Hair (back tuft)
+	_add_sphere(_visual, Vector3(0, 1.36, -0.06), 0.28, HAIR)
+	# Hat brim + crown
+	_add_cylinder(_visual, Vector3(0, 1.50, 0), 0.45, 0.04, HAT_STRAW)
+	_add_cylinder(_visual, Vector3(0, 1.58, 0), 0.24, 0.16, HAT_STRAW)
+	_add_cylinder(_visual, Vector3(0, 1.52, 0), 0.245, 0.04, HAT_BAND)
+	# Eyes (look forward — toward -Z which is the camera-back direction in our scene)
+	_add_sphere(_visual, Vector3(-0.09, 1.32, 0.24), 0.035, Color.BLACK)
+	_add_sphere(_visual, Vector3( 0.09, 1.32, 0.24), 0.035, Color.BLACK)
 
-func _physics_process(_delta: float) -> void:
+func _add_box(parent: Node, pos: Vector3, size: Vector3, color: Color) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = size
+	m.mesh = bm
+	m.position = pos
+	m.material_override = _mat(color)
+	parent.add_child(m)
+	return m
+
+func _add_sphere(parent: Node, pos: Vector3, radius: float, color: Color) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = radius
+	sm.height = radius * 2.0
+	sm.radial_segments = 16
+	sm.rings = 8
+	m.mesh = sm
+	m.position = pos
+	m.material_override = _mat(color)
+	parent.add_child(m)
+	return m
+
+func _add_cylinder(parent: Node, pos: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = radius
+	cm.bottom_radius = radius
+	cm.height = height
+	cm.radial_segments = 18
+	m.mesh = cm
+	m.position = pos
+	m.material_override = _mat(color)
+	parent.add_child(m)
+	return m
+
+func _mat(color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.roughness = 0.85
+	mat.metallic = 0.0
+	return mat
+
+# ────────────────────────────────────────────────────────────────────────────
+# Movement
+
+func _physics_process(delta: float) -> void:
 	var input := Vector2(
 		Input.get_axis("move_left", "move_right"),
 		Input.get_axis("move_up", "move_down")
 	)
-	if input.length() > 1.0:
-		input = input.normalized()
-	velocity = input * speed
-	move_and_slide()
+	var dir := Vector3(input.x, 0.0, input.y)
+	if dir.length() > 1.0:
+		dir = dir.normalized()
 
-	# Pick facing from input (prefer last-moved axis)
-	if abs(input.x) > abs(input.y) and input.x != 0:
-		_facing = "RIGHT" if input.x > 0 else "LEFT"
-	elif input.y != 0:
-		_facing = "DOWN" if input.y > 0 else "UP"
+	velocity.x = dir.x * speed
+	velocity.z = dir.z * speed
 
-	# Animation
-	var anim: String
-	if input.length_squared() > 0.01:
-		anim = "walk_%s" % _facing
+	if dir.length_squared() > 0.01:
+		_facing = dir.normalized()
+		# Subtle walk bob
+		_bob_t += delta * 12.0
+		_visual.position.y = abs(sin(_bob_t)) * 0.05
 	else:
-		anim = "idle_%s" % _facing
-	if _sprite.animation != anim:
-		_sprite.play(anim)
+		_visual.position.y = lerp(_visual.position.y, 0.0, 8.0 * delta)
+
+	# Rotate visual to face movement direction (smoothed).
+	var target_yaw: float = atan2(_facing.x, _facing.z)
+	_visual.rotation.y = lerp_angle(_visual.rotation.y, target_yaw, rotate_speed * delta)
+
+	if not is_on_floor():
+		velocity.y -= gravity * delta
+	else:
+		velocity.y = 0.0
+
+	move_and_slide()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("use_tool"):
 		_use_tool()
 
 func _use_tool() -> void:
-	if _farm_grid == null or not _farm_grid.has_method("use_tool"):
+	if _farm_grid == null:
 		return
-	var probe: Vector2 = global_position + _facing_vector() * 16.0
+	var probe: Vector3 = global_position + _facing * 1.0
 	_farm_grid.use_tool(GameState.current_tool, probe)
-
-func _facing_vector() -> Vector2:
-	match _facing:
-		"DOWN":  return Vector2(0, 1)
-		"UP":    return Vector2(0, -1)
-		"LEFT":  return Vector2(-1, 0)
-		"RIGHT": return Vector2(1, 0)
-	return Vector2.DOWN

@@ -19,8 +19,8 @@ GameState="*res://scripts/game_state.gd"
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/stretch/mode="viewport"
-window/stretch/aspect="keep"
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [input]
 
@@ -84,7 +84,4 @@ hotbar_6={
 [rendering]
 
 renderer/rendering_method="forward_plus"
-environment/defaults/default_clear_color=Color(0.42, 0.62, 0.32, 1)
-textures/canvas_textures/default_texture_filter=0
-2d/snap/snap_2d_transforms_to_pixel=true
-2d/snap/snap_2d_vertices_to_pixel=true
+environment/defaults/default_clear_color=Color(0.45, 0.62, 0.78, 1)
