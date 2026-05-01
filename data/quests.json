@@ -14,6 +14,12 @@
       "rewards": { "money": 100 },
       "unlocks_areas": ["forest"]
     },
+    "light_the_farm": {
+      "title": "Light the Farm",
+      "description": "Find 3 scattered lanterns and place them in the empty sockets around the farm before nightfall.",
+      "promotes_to": 0,
+      "rewards": { "money": 150 }
+    },
     "help_blacksmith": {
       "title": "A Smith in Need",
       "description": "Bring the Blacksmith 5 stone and 5 wood.",
