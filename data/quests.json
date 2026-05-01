@@ -1,0 +1,58 @@
+{
+  "_comment": "Main story quests. Each promotes the player rank on completion. Side/townsfolk quests will live in a separate file.",
+  "quests": {
+    "wizard_letter": {
+      "title": "A Letter from the Wizard",
+      "description": "Read the Wizard's letter and arrive at the abandoned farm.",
+      "promotes_to": 0,
+      "rewards": { "money": 0 }
+    },
+    "first_harvest": {
+      "title": "First Harvest",
+      "description": "Plant and harvest your first crop.",
+      "promotes_to": 1,
+      "rewards": { "money": 100 },
+      "unlocks_areas": ["forest"]
+    },
+    "help_blacksmith": {
+      "title": "A Smith in Need",
+      "description": "Bring the Blacksmith 5 stone and 5 wood.",
+      "promotes_to": 1,
+      "rewards": { "money": 200 },
+      "unlocks_areas": ["mines"]
+    },
+    "repair_bridge": {
+      "title": "Bridge to the Coast",
+      "description": "Gather materials and help the Carpenter repair the old bridge.",
+      "promotes_to": 2,
+      "rewards": { "money": 400 },
+      "unlocks_areas": ["beach"]
+    },
+    "restore_town_square": {
+      "title": "Heart of the Town",
+      "description": "Restore the town square fountain and gardens.",
+      "promotes_to": 3,
+      "rewards": { "money": 800 }
+    },
+    "collect_relics": {
+      "title": "Whispers of the Past",
+      "description": "Recover three magical relics scattered across the valley.",
+      "promotes_to": 4,
+      "rewards": { "money": 1500 },
+      "unlocks_areas": ["ancient_ruins"]
+    },
+    "restore_town": {
+      "title": "Valley Reborn",
+      "description": "Complete every townsfolk's restoration request.",
+      "promotes_to": 4,
+      "rewards": { "money": 2500 },
+      "unlocks_areas": ["wizard_tower"]
+    },
+    "wizards_trial": {
+      "title": "The Wizard's Trial",
+      "description": "Prove yourself worthy of becoming the protector of Greenfield Valley.",
+      "promotes_to": 5,
+      "rewards": { "money": 10000 }
+    }
+  }
+}

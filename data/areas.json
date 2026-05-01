@@ -1,0 +1,13 @@
+{
+  "_comment": "Area unlock gating. requires_rank uses Rank enum int (0=NEW_ARRIVAL ... 5=CHOSEN_GUARDIAN). requires_quests is an AND list of quest ids that must be completed.",
+  "areas": {
+    "farm":          { "name": "Farm",          "scene": "res://scenes/main.tscn",        "requires_rank": 0, "requires_quests": [] },
+    "town_centre":   { "name": "Town Centre",   "scene": "res://scenes/town.tscn",        "requires_rank": 0, "requires_quests": [] },
+    "forest":        { "name": "Forest",        "scene": "res://scenes/forest.tscn",      "requires_rank": 0, "requires_quests": ["first_harvest"] },
+    "mines":         { "name": "Stonefall Mines","scene": "res://scenes/mines.tscn",      "requires_rank": 1, "requires_quests": ["help_blacksmith"] },
+    "beach":         { "name": "Beach",         "scene": "res://scenes/beach.tscn",       "requires_rank": 1, "requires_quests": ["repair_bridge"] },
+    "mountain_pass": { "name": "Mountain Pass", "scene": "res://scenes/mountain.tscn",    "requires_rank": 3, "requires_quests": [] },
+    "ancient_ruins": { "name": "Ancient Ruins", "scene": "res://scenes/ruins.tscn",       "requires_rank": 4, "requires_quests": ["collect_relics"] },
+    "wizard_tower":  { "name": "Wizard Tower",  "scene": "res://scenes/wizard_tower.tscn","requires_rank": 5, "requires_quests": ["restore_town"] }
+  }
+}

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Harvest & Horizons — A Cozy Farming Adventure</title>
+<meta name="description" content="A cozy 2.5D farming and adventure game where every season brings new life, and beyond the forest lies discovery." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Quicksand:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --parchment: #f3ead0;
+    --parchment-2: #e8dcb5;
+    --ink: #3a2a1a;
+    --ink-soft: #5a4533;
+    --leaf: #6b8e3d;
+    --leaf-deep: #4a6b27;
+    --berry: #b8543a;
+    --gold: #c8a04a;
+    --shadow: 0 8px 24px rgba(58, 42, 26, 0.18);
+    --border: 2px solid #8a6a3f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #2a1f15;
+    color: var(--ink);
+    font-family: 'Quicksand', system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  body {
+    background:
+      radial-gradient(ellipse at top, #4a3826 0%, #2a1f15 60%),
+      #2a1f15;
+    background-attachment: fixed;
+  }
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  .parchment {
+    background: linear-gradient(180deg, var(--parchment) 0%, var(--parchment-2) 100%);
+    border: var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 40px;
+    position: relative;
+  }
+  .parchment::before, .parchment::after {
+    content: "";
+    position: absolute;
+    width: 14px; height: 14px;
+    background: #8a6a3f;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px var(--parchment);
+  }
+  .parchment::before { top: 14px; left: 14px; }
+  .parchment::after { top: 14px; right: 14px; }
+  header.parchment { text-align: center; padding-top: 56px; }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 700;
+    font-size: clamp(48px, 7vw, 84px);
+    color: var(--ink);
+    letter-spacing: 0.5px;
+    line-height: 1.05;
+  }
+  h1 .amp { color: var(--berry); font-style: italic; padding: 0 6px; }
+  .tagline {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 6px 22px;
+    background: var(--ink);
+    color: var(--parchment);
+    border-radius: 999px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  .blurb {
+    margin: 28px auto 0;
+    max-width: 620px;
+    color: var(--ink-soft);
+    font-size: 18px;
+    font-style: italic;
+  }
+  .cta {
+    margin-top: 32px;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 32px;
+    border-radius: 10px;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-primary {
+    background: var(--leaf);
+    color: white;
+    box-shadow: 0 4px 0 var(--leaf-deep), 0 6px 16px rgba(74, 107, 39, 0.35);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--leaf-deep), 0 10px 22px rgba(74, 107, 39, 0.4); }
+  .btn-primary:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--leaf-deep); }
+  .btn-secondary {
+    background: var(--parchment);
+    color: var(--ink);
+    border: 2px solid var(--ink-soft);
+  }
+  .btn-secondary:hover { background: white; }
+
+  section { margin-top: 32px; }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: var(--parchment);
+    border: var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    box-shadow: var(--shadow);
+  }
+  .card h3 {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--leaf-deep);
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  .card p { color: var(--ink-soft); }
+  .card .icon { font-size: 32px; margin-bottom: 8px; }
+
+  .ranks {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .ranks li {
+    background: white;
+    padding: 10px 14px;
+    border-left: 4px solid var(--gold);
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .ranks li .num { color: var(--berry); font-weight: 700; margin-right: 8px; }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    color: var(--parchment);
+    text-align: center;
+    margin-bottom: 18px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .section-title .accent { color: var(--gold); }
+
+  .phases { display: flex; flex-direction: column; gap: 12px; }
+  .phase {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+    background: var(--parchment);
+    border-radius: 10px;
+    border-left: 6px solid var(--ink-soft);
+  }
+  .phase.done { border-left-color: var(--leaf); }
+  .phase.next { border-left-color: var(--gold); background: linear-gradient(90deg, #fff5d8 0%, var(--parchment) 100%); }
+  .phase .badge {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .phase.done .badge { background: var(--leaf); color: white; }
+  .phase.next .badge { background: var(--gold); color: var(--ink); }
+  .phase.todo .badge { background: var(--parchment-2); color: var(--ink-soft); }
+  .phase .label { flex: 1; font-weight: 500; }
+
+  footer {
+    margin-top: 48px;
+    text-align: center;
+    color: #aa9978;
+    font-size: 14px;
+  }
+  footer a { color: var(--gold); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  .notice {
+    background: #fff5d8;
+    border: 1px dashed var(--gold);
+    color: var(--ink-soft);
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-top: 24px;
+    text-align: center;
+    font-size: 15px;
+  }
+  .notice strong { color: var(--berry); }
+</style>
+</head>
+<body>
+  <main class="page">
+
+    <header class="parchment">
+      <h1>Harvest <span class="amp">&amp;</span> Horizons</h1>
+      <div class="tagline">Farm · Explore · Thrive</div>
+      <p class="blurb">
+        A cozy farming adventure where every season brings new life, and beyond the forest lies discovery.
+        Restore an abandoned farm, help the people of Greenfield Valley, and uncover the Wizard's secret.
+      </p>
+      <div class="cta">
+        <a href="play/" class="btn btn-primary">▶ Play in browser</a>
+        <a href="#about" class="btn btn-secondary">Learn more</a>
+      </div>
+      <div class="notice">
+        <strong>Early prototype.</strong> Phase 1 is a walking sandbox with the core HUD wired up — farming, shops, quests, and the wider world land in upcoming phases.
+      </div>
+    </header>
+
+    <section id="about">
+      <h2 class="section-title">A <span class="accent">letter</span> arrives</h2>
+      <div class="parchment">
+        <p style="font-size:18px; font-style:italic; color:var(--ink-soft); text-align:center; max-width:680px; margin:0 auto;">
+          "The valley needs a steady hand, and the soil remembers those who care for it.
+          Come to Greenfield. The old farm is yours, if you'll have it.
+          There is more here than fields and fences — but those things will keep, for now."
+        </p>
+        <p style="text-align:center; margin-top:14px; font-family:'Cormorant Garamond',serif; font-size:22px; color:var(--berry);">
+          — The Wizard
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">What you'll <span class="accent">do</span></h2>
+      <div class="grid-3">
+        <div class="card">
+          <div class="icon">🌱</div>
+          <h3>Farm &amp; Raise</h3>
+          <p>Plant seasonal crops, raise twelve kinds of animals, and build your homestead from a starter shack to a five-tier estate.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🏘️</div>
+          <h3>Help the Town</h3>
+          <p>Meet nine townsfolk with their own personalities, likes, and stories. Build friendships, give gifts, and complete their requests.</p>
+        </div>
+        <div class="card">
+          <div class="icon">⚔️</div>
+          <h3>Explore &amp; Adventure</h3>
+          <p>Chop the forest, mine the deeps, fish the coast, and face stronger foes as you press deeper into Greenfield Valley.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Six <span class="accent">ranks</span> to Guardian</h2>
+      <div class="parchment">
+        <p style="text-align:center; color:var(--ink-soft);">
+          Earn your place in the valley. Each rank unlocks new areas, quests, and trust from the townsfolk.
+        </p>
+        <ol class="ranks">
+          <li><span class="num">I</span>New Arrival</li>
+          <li><span class="num">II</span>Local Helper</li>
+          <li><span class="num">III</span>Trusted Farmer</li>
+          <li><span class="num">IV</span>Town Restorer</li>
+          <li><span class="num">V</span>Valley Hero</li>
+          <li><span class="num">VI</span>Chosen Guardian</li>
+        </ol>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Build <span class="accent">progress</span></h2>
+      <div class="phases">
+        <div class="phase done"><span class="badge">Done</span><span class="label">Phase 1a — Core scene, player movement, day/night, HUD</span></div>
+        <div class="phase next"><span class="badge">Next</span><span class="label">Phase 1b — Inventory, tool hotbar, till/plant/water/harvest</span></div>
+        <div class="phase todo"><span class="badge">Soon</span><span class="label">Phase 2 — Shop, dynamic economy, market trends</span></div>
+        <div class="phase todo"><span class="badge">Soon</span><span class="label">Phase 3a — Wizard letter intro, quest log, rank-up flow</span></div>
+        <div class="phase todo"><span class="badge">Soon</span><span class="label">Phase 3b — Skills tree, 5-tier house upgrades</span></div>
+        <div class="phase todo"><span class="badge">Soon</span><span class="label">Phase 3c — Animals, coops, barns, breeding</span></div>
+        <div class="phase todo"><span class="badge">Later</span><span class="label">Phase 4 — World map, scene switching, combat</span></div>
+        <div class="phase todo"><span class="badge">Later</span><span class="label">Phase 5 — Ancient Ruins, Wizard Tower, final trial</span></div>
+      </div>
+    </section>
+
+    <footer>
+      <p>Made with <a href="https://godotengine.org" target="_blank" rel="noopener">Godot 4.3</a> · Source on <a href="https://github.com/communityorg-discord/harvest-horizons" target="_blank" rel="noopener">GitHub</a></p>
+    </footer>
+
+  </main>
+</body>
+</html>
