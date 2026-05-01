@@ -221,28 +221,26 @@ func _build_player_card() -> void:
 func _bar_with_label(top: Color, bot: Color, icon: String) -> Array:
 	var wrap := Control.new()
 	wrap.custom_minimum_size = Vector2(0, 18)
-	# Background track
-	var bg := PanelContainer.new()
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var bg_sb := StyleBoxFlat.new()
-	bg_sb.bg_color = Color(0, 0, 0, 0.6)
-	bg_sb.set_corner_radius_all(9)
-	bg_sb.border_width_left = 1
-	bg_sb.border_width_right = 1
-	bg_sb.border_width_top = 1
-	bg_sb.border_width_bottom = 1
-	bg_sb.border_color = Color(1, 1, 1, 0.18)
-	bg.add_theme_stylebox_override("panel", bg_sb)
-	wrap.add_child(bg)
-	# Gradient progress bar inside the background
+	# ProgressBar with rounded background + rounded fill (StyleBoxFlat — colour
+	# is the average of the gradient endpoints we used to want).
 	var bar := ProgressBar.new()
 	bar.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bar.offset_left = 1; bar.offset_right = -1; bar.offset_top = 1; bar.offset_bottom = -1
 	bar.show_percentage = false
-	var fill := StyleBoxTexture.new()
-	fill.texture = _gradient_texture(top, bot)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0, 0, 0, 0.6)
+	bg.set_corner_radius_all(9)
+	bg.border_width_left = 1
+	bg.border_width_right = 1
+	bg.border_width_top = 1
+	bg.border_width_bottom = 1
+	bg.border_color = Color(1, 1, 1, 0.18)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = top.lerp(bot, 0.4)
 	fill.set_corner_radius_all(8)
-	bar.add_theme_stylebox_override("background", StyleBoxEmpty.new())
+	# Soft inner highlight so the fill reads as glossy
+	fill.border_width_top = 1
+	fill.border_color = Color(1, 1, 1, 0.4)
+	bar.add_theme_stylebox_override("background", bg)
 	bar.add_theme_stylebox_override("fill", fill)
 	wrap.add_child(bar)
 	# Icon at left
