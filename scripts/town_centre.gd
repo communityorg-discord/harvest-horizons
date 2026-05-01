@@ -117,14 +117,23 @@ func _add_collider(pos: Vector3, size: Vector3) -> StaticBody3D:
 # Ground + plaza tiles
 
 func _build_ground() -> void:
+	# Subground catch-all
+	var subground := MeshInstance3D.new()
+	var spm := PlaneMesh.new()
+	spm.size = Vector2(400, 400)
+	subground.mesh = spm
+	subground.position = Vector3(0, -2.0, 0)
+	subground.material_override = _mat(Color(0.18, 0.28, 0.14), 0.95)
+	add_child(subground)
+	# Main grass ground
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(160, 160)
+	pm.size = Vector2(200, 200)
 	ground.mesh = pm
 	ground.material_override = _mat(Color(0.30, 0.48, 0.22), 0.95)
 	add_child(ground)
 	# Static collider so the player doesn't fall through
-	_add_collider(Vector3(0, -0.1, 0), Vector3(160, 0.2, 160))
+	_add_collider(Vector3(0, -0.1, 0), Vector3(200, 0.2, 200))
 
 func _build_plaza() -> void:
 	# Cobble plaza centre, 12x12, made from many small tiles for visual rhythm

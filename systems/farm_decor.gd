@@ -190,10 +190,19 @@ func _add_collider(pos: Vector3, size: Vector3) -> StaticBody3D:
 # Ground + path
 
 func _build_ground() -> void:
-	# Bigger opaque ground plane so the camera never sees the sky past it.
+	# A second, darker "subground" plane sits a meter below to catch any
+	# horizon / sky bleed if the camera ever angles past the world edge.
+	var subground := MeshInstance3D.new()
+	var spm := PlaneMesh.new()
+	spm.size = Vector2(400, 400)
+	subground.mesh = spm
+	subground.position = Vector3(0, -2.0, 0)
+	subground.material_override = _mat(Color(0.18, 0.28, 0.14), 0.95)
+	add_child(subground)
+	# Main ground plane.
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(160, 160)
+	pm.size = Vector2(200, 200)
 	ground.mesh = pm
 	ground.material_override = _mat(GRASS_DARK, 0.95)
 	add_child(ground)
@@ -582,19 +591,16 @@ func _build_stepping_stones() -> void:
 
 # Round pond with a stone rim and a still water surface
 func _build_pond(center: Vector3, radius_x: float, radius_z: float) -> void:
-	# Water surface (flat ellipse)
+	# Water surface (flat ellipse) — fully opaque so it can't alpha-bleed.
 	var water := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(radius_x * 2.0, radius_z * 2.0)
 	water.mesh = pm
 	water.position = center + Vector3(0, 0.04, 0)
 	var wmat := StandardMaterial3D.new()
-	wmat.albedo_color = Color(0.18, 0.45, 0.65, 0.95)
+	wmat.albedo_color = Color(0.18, 0.45, 0.65, 1.0)
 	wmat.metallic = 0.45
 	wmat.roughness = 0.15
-	wmat.emission_enabled = true
-	wmat.emission = Color(0.05, 0.15, 0.25)
-	wmat.emission_energy_multiplier = 0.3
 	water.material_override = wmat
 	add_child(water)
 	# Stone rim around the pond — many small rocks placed in an ellipse
@@ -616,7 +622,7 @@ func _build_pond(center: Vector3, radius_x: float, radius_z: float) -> void:
 		lily.mesh = lpm
 		lily.position = center + Vector3(cos(t) * r, 0.06, sin(t) * r)
 		lily.rotation.y = rng.randf() * TAU
-		lily.material_override = _mat(Color(0.22, 0.55, 0.22, 0.95))
+		lily.material_override = _mat(Color(0.22, 0.55, 0.22, 1.0))
 		add_child(lily)
 
 # A scarecrow — cross of poles, sphere head with hat, cloth flaps
