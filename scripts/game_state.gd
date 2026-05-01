@@ -337,6 +337,9 @@ func item_count(item_id: String) -> int:
 func damage(amount: int) -> void:
 	hp = clampi(hp - amount, 0, max_hp)
 	hp_changed.emit(hp, max_hp)
+	if hp <= 0:
+		# Knocked out — same penalty as a 3 AM pass-out (wake at 2 PM, 50% stats).
+		pass_out()
 
 func heal(amount: int) -> void:
 	hp = clampi(hp + amount, 0, max_hp)

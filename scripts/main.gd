@@ -13,6 +13,9 @@ const SUNSET := 20.0
 const VISITOR_HOUR := 19  # 7 PM trigger
 const PICKUP_SCRIPT := preload("res://scripts/lantern_pickup.gd")
 const SOCKET_SCRIPT := preload("res://scripts/lantern_socket.gd")
+const MONSTER_SCRIPT := preload("res://scripts/monster.gd")
+const NIGHT_MONSTER_CAP := 3
+const SAFE_DIST_FROM_PLAYER := 8.0  # don't spawn in the player's face
 
 # Predefined lantern pickup locations (3 of them, scattered)
 const PICKUP_POSITIONS := [
@@ -37,7 +40,7 @@ func _ready() -> void:
 	if "light_the_farm" in GameState.active_quests:
 		call_deferred("_spawn_lighting_quest_objects")
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var t: float = float(GameState.hour) + float(GameState.minute) / 60.0
 
 	var arc: float = (t - SUNRISE) / (SUNSET - SUNRISE)
@@ -51,6 +54,15 @@ func _process(_delta: float) -> void:
 		var day_progress: float = (t - SUNRISE) / (SUNSET - SUNRISE)
 		energy = sin(day_progress * PI) * 1.3 + 0.1
 	sun.light_energy = energy
+
+	# Monster spawning + despawning, checked every 1.5s
+	_spawn_check_t -= delta
+	if _spawn_check_t <= 0.0:
+		_spawn_check_t = 1.5
+		if _is_night():
+			_spawn_monster()
+		else:
+			_despawn_monsters()
 
 # ────────────────────────────────────────────────────────────────────────────
 # Inn Master arrival intro
@@ -177,3 +189,43 @@ func _on_lantern_placed() -> void:
 	_placed_count += 1
 	GameState.set_quest_progress("light_the_farm", _placed_count)
 	GameState.save_game()
+
+# ────────────────────────────────────────────────────────────────────────────
+# Night monster spawning
+
+var _spawn_check_t: float = 0.0
+var _monsters_root: Node3D
+
+func _ensure_monsters_root() -> Node3D:
+	if _monsters_root == null or not is_instance_valid(_monsters_root):
+		_monsters_root = Node3D.new()
+		_monsters_root.name = "Monsters"
+		add_child(_monsters_root)
+	return _monsters_root
+
+func _is_night() -> bool:
+	var t: float = float(GameState.hour) + float(GameState.minute) / 60.0
+	return t >= SUNSET or t < SUNRISE
+
+func _spawn_monster() -> void:
+	var root := _ensure_monsters_root()
+	if root.get_child_count() >= NIGHT_MONSTER_CAP:
+		return
+	# Random position inside playable area, not too close to the player
+	for _attempt in range(10):
+		var x: float = randf_range(-14.0, 14.0)
+		var z: float = randf_range(-12.0, 14.0)
+		var p := Vector3(x, 0.5, z)
+		if _player != null and p.distance_to(_player.global_position) < SAFE_DIST_FROM_PLAYER:
+			continue
+		var m := CharacterBody3D.new()
+		m.set_script(MONSTER_SCRIPT)
+		m.position = p
+		root.add_child(m)
+		return
+
+func _despawn_monsters() -> void:
+	if _monsters_root == null:
+		return
+	for child in _monsters_root.get_children():
+		child.queue_free()

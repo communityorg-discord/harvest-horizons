@@ -26,6 +26,7 @@ const PANTS      := Color(0.32, 0.22, 0.14)
 const SHOES      := Color(0.18, 0.12, 0.07)
 
 func _ready() -> void:
+	add_to_group("player")
 	_build_character()
 
 func _build_character() -> void:
@@ -137,7 +138,39 @@ func _unhandled_input(event: InputEvent) -> void:
 		_use_tool()
 
 func _use_tool() -> void:
+	# Sword (hotbar slot 4) → swing at the nearest monster in range.
+	if GameState.current_tool == 4:
+		_swing_sword()
+		return
+	# Otherwise use the tool on the farm grid (till / water / plant / harvest).
 	if _farm_grid == null:
 		return
 	var probe: Vector3 = global_position + _facing * 1.0
 	_farm_grid.use_tool(GameState.current_tool, probe)
+
+const SWORD_RANGE := 2.0
+const SWORD_DAMAGE := 20
+
+func _swing_sword() -> void:
+	# Need a sword in inventory to actually do damage.
+	if GameState.item_count("rusted_sword") <= 0:
+		return
+	var nearest: Node = null
+	var nearest_d: float = 999.0
+	for m in get_tree().get_nodes_in_group("monster"):
+		if not (m is Node3D):
+			continue
+		var d: float = (m as Node3D).global_position.distance_to(global_position)
+		if d < nearest_d and d < SWORD_RANGE:
+			nearest = m
+			nearest_d = d
+	if nearest == null:
+		return
+	if nearest.has_method("take_damage"):
+		nearest.take_damage(SWORD_DAMAGE)
+	# Tick down sword durability — at 50 kills the rusted sword snaps.
+	var kills: int = int(GameState.get_meta("rusted_sword_kills", 0)) + 1
+	GameState.set_meta("rusted_sword_kills", kills)
+	if kills >= 50:
+		GameState.remove_item("rusted_sword", 1)
+		GameState.set_meta("rusted_sword_kills", 0)
