@@ -2,5 +2,6 @@
 
 [ext_resource type="Script" path="res://systems/farm_grid.gd" id="1"]
 
-[node name="FarmGrid" type="Node3D"]
+[node name="FarmGrid" type="Node2D"]
 script = ExtResource("1")
+y_sort_enabled = true
