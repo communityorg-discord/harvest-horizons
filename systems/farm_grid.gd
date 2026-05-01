@@ -58,16 +58,41 @@ func _build_tile(r: int, c: int) -> Dictionary:
 	ground.material_override = gmat
 	add_child(ground)
 
-	var crop := MeshInstance3D.new()
-	var cm := BoxMesh.new()
-	cm.size = Vector3(0.5, 0.5, 0.5)
-	crop.mesh = cm
-	crop.position = pos + Vector3(0, 0.3, 0)
-	var cmat := StandardMaterial3D.new()
-	cmat.albedo_color = CROP_COLORS[State.PLANTED]
-	crop.material_override = cmat
-	crop.visible = false
+	# Crop visual: stem (cylinder) + leaves (sphere on top), grouped under a Node3D so we can scale uniformly.
+	var crop := Node3D.new()
+	crop.position = pos + Vector3(0, 0.06, 0)
 	add_child(crop)
+
+	var stem := MeshInstance3D.new()
+	var stem_mesh := CylinderMesh.new()
+	stem_mesh.top_radius = 0.04
+	stem_mesh.bottom_radius = 0.06
+	stem_mesh.height = 0.5
+	stem_mesh.radial_segments = 8
+	stem.mesh = stem_mesh
+	stem.position = Vector3(0, 0.25, 0)
+	var stem_mat := StandardMaterial3D.new()
+	stem_mat.albedo_color = Color(0.30, 0.45, 0.18)
+	stem.material_override = stem_mat
+	crop.add_child(stem)
+
+	var leaves := MeshInstance3D.new()
+	var leaf_mesh := SphereMesh.new()
+	leaf_mesh.radius = 0.32
+	leaf_mesh.height = 0.55
+	leaf_mesh.radial_segments = 12
+	leaf_mesh.rings = 6
+	leaves.mesh = leaf_mesh
+	leaves.position = Vector3(0, 0.55, 0)
+	var leaf_mat := StandardMaterial3D.new()
+	leaf_mat.albedo_color = CROP_COLORS[State.PLANTED]
+	leaves.material_override = leaf_mat
+	crop.add_child(leaves)
+
+	crop.visible = false
+	crop.set_meta("stem", stem)
+	crop.set_meta("leaves", leaves)
+	crop.set_meta("leaf_mat", leaf_mat)
 
 	return {
 		"state": State.GRASS,
@@ -92,13 +117,13 @@ func _refresh(t: Dictionary) -> void:
 	gmat.albedo_color = COLORS[t.state]
 	if t.state >= State.PLANTED:
 		t.crop.visible = true
-		var cmat: StandardMaterial3D = t.crop.material_override
-		cmat.albedo_color = CROP_COLORS.get(t.state, CROP_COLORS[State.PLANTED])
+		var leaf_mat: StandardMaterial3D = t.crop.get_meta("leaf_mat")
+		leaf_mat.albedo_color = CROP_COLORS.get(t.state, CROP_COLORS[State.PLANTED])
 		var s: float = 0.0
 		match t.state:
 			State.PLANTED: s = 0.3
-			State.GROWING: s = 0.6
-			State.READY:   s = 1.1
+			State.GROWING: s = 0.65
+			State.READY:   s = 1.0
 		t.crop.scale = Vector3(s, s, s)
 	else:
 		t.crop.visible = false
