@@ -24,10 +24,11 @@ func _ready() -> void:
 	_build_ground()
 	_build_plaza()
 	_build_fountain()
-	_build_shop(Vector3(-12, 0, -7), ROOF_BLUE,  "BLACKSMITH")
-	_build_shop(Vector3( 12, 0, -7), ROOF_RED,   "GENERAL STORE")
-	_build_shop(Vector3(-12, 0,  7), ROOF_GREEN, "CAFE")
-	_build_shop(Vector3( 12, 0,  7), ROOF_RED,   "INN")
+	# Shops with door facing the plaza (door_facing = +1 means +Z, -1 means -Z)
+	_build_shop(Vector3(-12, 0, -7), ROOF_BLUE,  "BLACKSMITH",     1.0, "blacksmith")
+	_build_shop(Vector3( 12, 0, -7), ROOF_RED,   "GENERAL STORE", 1.0, "general")
+	_build_shop(Vector3(-12, 0,  7), ROOF_GREEN, "CAFE",          -1.0, "cafe")
+	_build_shop(Vector3( 12, 0,  7), ROOF_RED,   "INN",           -1.0, "inn")
 	_build_perimeter_walls()
 	_scatter_lampposts()
 	_scatter_decor()
@@ -212,16 +213,17 @@ func _build_fountain() -> void:
 # ────────────────────────────────────────────────────────────────────────────
 # Stub shop buildings
 
-func _build_shop(origin: Vector3, roof_color: Color, label: String) -> void:
+func _build_shop(origin: Vector3, roof_color: Color, label: String, door_facing: float, shop_type: String) -> void:
 	# Foundation
 	_box(origin + Vector3(0, 0.3, 0), Vector3(5.0, 0.6, 4.0), STONE)
 	# Walls
 	_box(origin + Vector3(0, 1.6, 0), Vector3(4.6, 2.0, 3.6), WHITE_WALL)
-	# Door
-	_box(origin + Vector3(0, 1.0, 1.85), Vector3(0.8, 1.4, 0.06), Color(0.32, 0.20, 0.12))
-	# Windows
-	_box(origin + Vector3(-1.3, 1.7, 1.85), Vector3(0.7, 0.7, 0.06), Color(0.78, 0.88, 0.92))
-	_box(origin + Vector3( 1.3, 1.7, 1.85), Vector3(0.7, 0.7, 0.06), Color(0.78, 0.88, 0.92))
+	# Door (faces door_facing direction)
+	var door_z: float = 1.85 * door_facing
+	_box(origin + Vector3(0, 1.0, door_z), Vector3(0.8, 1.4, 0.06), Color(0.32, 0.20, 0.12))
+	# Windows on the same side as the door
+	_box(origin + Vector3(-1.3, 1.7, door_z), Vector3(0.7, 0.7, 0.06), Color(0.78, 0.88, 0.92))
+	_box(origin + Vector3( 1.3, 1.7, door_z), Vector3(0.7, 0.7, 0.06), Color(0.78, 0.88, 0.92))
 	# Sloped roof
 	for sz in [-1.0, 1.0]:
 		var slope := MeshInstance3D.new()
@@ -237,19 +239,49 @@ func _build_shop(origin: Vector3, roof_color: Color, label: String) -> void:
 	var bm := BoxMesh.new()
 	bm.size = Vector3(2.4, 0.5, 0.08)
 	sign.mesh = bm
-	sign.position = origin + Vector3(0, 2.4, 1.95)
+	sign.position = origin + Vector3(0, 2.4, door_z * 1.05)
 	sign.material_override = _mat(SIGN_BG)
 	add_child(sign)
-	# Sign label using a Label3D so we can read it
+	# Sign label
 	var label3d := Label3D.new()
 	label3d.text = label
 	label3d.font_size = 56
 	label3d.outline_size = 8
-	label3d.position = origin + Vector3(0, 2.4, 2.02)
+	label3d.position = origin + Vector3(0, 2.4, door_z * 1.10)
+	# Rotate text to face outward
+	if door_facing < 0:
+		label3d.rotation.y = deg_to_rad(180)
 	label3d.modulate = Color(0.22, 0.16, 0.10)
 	add_child(label3d)
-	# Collision footprint
+	# Building collision footprint (solid block)
 	_add_collider(origin + Vector3(0, 1.5, 0), Vector3(5.0, 3.0, 4.0))
+	# Door trigger Area3D — slightly outside the building so the player walks
+	# INTO it before colliding with the wall
+	var area := Area3D.new()
+	area.set_script(load("res://scripts/shop_door.gd"))
+	area.set("shop_type", shop_type)
+	area.set("target_scene", "res://scenes/shop_interior.tscn")
+	area.position = origin + Vector3(0, 0.9, door_z + 0.7 * door_facing)
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(1.4, 1.6, 1.0)
+	col.shape = shape
+	area.add_child(col)
+	add_child(area)
+	# Tiny glow marker by the door
+	var marker := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.18
+	sm.height = 0.36
+	marker.mesh = sm
+	marker.position = origin + Vector3(0, 0.18, door_z + 0.7 * door_facing)
+	var mmat := StandardMaterial3D.new()
+	mmat.albedo_color = Color(1.0, 0.85, 0.4)
+	mmat.emission_enabled = true
+	mmat.emission = Color(1.0, 0.7, 0.2)
+	mmat.emission_energy_multiplier = 1.2
+	marker.material_override = mmat
+	add_child(marker)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Lampposts + decor
