@@ -265,8 +265,8 @@ func _build_cottage(origin: Vector3) -> void:
 			_box(self, origin + Vector3(sx * 1.92, 1.4, sz * 1.52), Vector3(0.16, 1.65, 0.16), WOOD_BEAM)
 	_box(self, origin + Vector3(0, 1.0, 1.62), Vector3(0.7, 1.2, 0.05), DOOR)
 	_box(self, origin + Vector3(0, 0.65, 1.78), Vector3(0.9, 0.10, 0.30), STONE)
-	_box(self, origin + Vector3(-1.3, 1.55, 1.62), Vector3(0.55, 0.55, 0.04), WINDOW_GLASS)
-	_box(self, origin + Vector3( 1.3, 1.55, 1.62), Vector3(0.55, 0.55, 0.04), WINDOW_GLASS)
+	_emissive_window(origin + Vector3(-1.3, 1.55, 1.62))
+	_emissive_window(origin + Vector3( 1.3, 1.55, 1.62))
 	_box(self, origin + Vector3(-1.3, 1.55, 1.64), Vector3(0.05, 0.55, 0.06), WOOD_BEAM)
 	_box(self, origin + Vector3( 1.3, 1.55, 1.64), Vector3(0.05, 0.55, 0.06), WOOD_BEAM)
 	_box(self, origin + Vector3(-1.3, 1.55, 1.64), Vector3(0.55, 0.05, 0.06), WOOD_BEAM)
@@ -285,6 +285,27 @@ func _build_cottage(origin: Vector3) -> void:
 	_prism(origin + Vector3(0, 2.95,  1.6), Vector3(4.0, 1.2, 0.10), WOOD_WALL)
 	_box(self, origin + Vector3(1.4, 3.6, -0.5), Vector3(0.5, 1.6, 0.5), CHIMNEY_BRICK)
 	_box(self, origin + Vector3(1.4, 4.45, -0.5), Vector3(0.7, 0.18, 0.7), STONE_DARK)
+
+func _emissive_window(pos: Vector3) -> void:
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.55, 0.55, 0.04)
+	mi.mesh = bm
+	mi.position = pos
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.88, 0.55)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.78, 0.42)
+	mat.emission_energy_multiplier = 1.6
+	mi.material_override = mat
+	add_child(mi)
+	# Subtle warm point light spilling out the window
+	var light := OmniLight3D.new()
+	light.position = pos + Vector3(0, 0, 0.4)
+	light.light_color = Color(1.0, 0.85, 0.55)
+	light.light_energy = 0.6
+	light.omni_range = 3.5
+	add_child(light)
 
 func _build_cottage_door() -> void:
 	var door := Area3D.new()
