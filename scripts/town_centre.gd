@@ -119,12 +119,12 @@ func _add_collider(pos: Vector3, size: Vector3) -> StaticBody3D:
 func _build_ground() -> void:
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(60, 60)
+	pm.size = Vector2(160, 160)
 	ground.mesh = pm
 	ground.material_override = _mat(Color(0.30, 0.48, 0.22), 0.95)
 	add_child(ground)
 	# Static collider so the player doesn't fall through
-	_add_collider(Vector3(0, -0.1, 0), Vector3(60, 0.2, 60))
+	_add_collider(Vector3(0, -0.1, 0), Vector3(160, 0.2, 160))
 
 func _build_plaza() -> void:
 	# Cobble plaza centre, 12x12, made from many small tiles for visual rhythm
@@ -300,35 +300,54 @@ func _scatter_decor() -> void:
 # Boundary walls
 
 func _build_perimeter_walls() -> void:
-	# Cobble walls around the playable plaza area, with a gap on the west
-	# side leading back to the farm.
-	var step: float = 2.0
-	var size: Vector3 = Vector3(2.0, 2.0, 2.0)
+	# Dense forest perimeter (visual) + invisible walls (collision).
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 777
 	var x_min: float = -16.0
 	var x_max: float =  16.0
 	var z_min: float = -16.0
 	var z_max: float =  16.0
-	var x: float = x_min
-	while x <= x_max:
-		_solid_block(Vector3(x, 0, z_min - 1.0), size)
-		_solid_block(Vector3(x, 0, z_max + 1.0), size)
+	var pad: float = 1.5
+	var step: float = 1.6
+	var x: float = x_min - pad
+	while x <= x_max + pad:
+		_perimeter_tree(rng, Vector3(x, 0, z_min - pad))
+		_perimeter_tree(rng, Vector3(x, 0, z_max + pad))
 		x += step
-	var z: float = z_min
-	while z <= z_max:
-		# Gap on the west (x_min) side around z=-3..3 for the return gate
-		if abs(z) > 3.0:
-			_solid_block(Vector3(x_min - 1.0, 0, z), size)
-		_solid_block(Vector3(x_max + 1.0, 0, z), size)
+	var z: float = z_min - pad
+	while z <= z_max + pad:
+		# West side: leave a gap for the return gate around z=-3..3
+		if abs(z) > 3.5:
+			_perimeter_tree(rng, Vector3(x_min - pad, 0, z))
+		_perimeter_tree(rng, Vector3(x_max + pad, 0, z))
 		z += step
+	# Invisible solid walls
+	var wall_h: float = 4.0
+	var wall_t: float = 1.0
+	_add_collider(Vector3(0, wall_h * 0.5, z_min - 0.5), Vector3(x_max - x_min + 4.0, wall_h, wall_t))
+	_add_collider(Vector3(0, wall_h * 0.5, z_max + 0.5), Vector3(x_max - x_min + 4.0, wall_h, wall_t))
+	_add_collider(Vector3(x_max + 0.5, wall_h * 0.5, 0), Vector3(wall_t, wall_h, z_max - z_min + 4.0))
+	# West split for return-gate gap
+	var gap_top := -3.5
+	var gap_bot := 3.5
+	var west_top_len: float = gap_top - z_min + 2.0
+	var west_bot_len: float = z_max - gap_bot + 2.0
+	_add_collider(Vector3(x_min - 0.5, wall_h * 0.5, (z_min + gap_top) * 0.5 - 1.0), Vector3(wall_t, wall_h, west_top_len))
+	_add_collider(Vector3(x_min - 0.5, wall_h * 0.5, (gap_bot + z_max) * 0.5 + 1.0), Vector3(wall_t, wall_h, west_bot_len))
 
-func _solid_block(pos: Vector3, size: Vector3) -> void:
-	var packed: PackedScene = load(NATURE + "cliff_block_rock.glb")
-	if packed:
-		var inst: Node3D = packed.instantiate()
-		inst.position = pos
-		inst.scale = Vector3(2.0, 2.0, 2.0)
-		add_child(inst)
-	_add_collider(pos + Vector3(0, size.y * 0.5, 0), size)
+func _perimeter_tree(rng: RandomNumberGenerator, base: Vector3) -> void:
+	var paths := ["tree_pineTallA.glb", "tree_pineDefaultA.glb", "tree_pineDefaultB.glb", "tree_oak.glb"]
+	var path := NATURE + paths[rng.randi() % paths.size()]
+	var packed: PackedScene = load(path)
+	if packed == null:
+		return
+	var jitter := Vector3(rng.randf_range(-0.4, 0.4), 0, rng.randf_range(-0.4, 0.4))
+	var inst: Node3D = packed.instantiate()
+	inst.position = base + jitter
+	var s := rng.randf_range(2.2, 3.0)
+	inst.scale = Vector3(s, s, s)
+	inst.rotation.y = rng.randf() * TAU
+	add_child(inst)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Return gate — west side, leads back to the farm

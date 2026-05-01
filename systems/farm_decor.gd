@@ -190,21 +190,22 @@ func _add_collider(pos: Vector3, size: Vector3) -> StaticBody3D:
 # Ground + path
 
 func _build_ground() -> void:
-	# Two-tone grass: a darker base + a lighter mottled overlay made from many
-	# big translucent quads. Cheaper than a custom shader, looks less flat.
+	# Bigger opaque ground plane so the camera never sees the sky past it.
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(80, 80)
+	pm.size = Vector2(160, 160)
 	ground.mesh = pm
 	ground.material_override = _mat(GRASS_DARK, 0.95)
 	add_child(ground)
-	# Mottle: ~60 large irregular grass-tone discs for visible variation
+	# Mottle: opaque (no alpha) — was causing blue-sky bleed through earlier.
+	# Discs sit just above the ground and blend visually because they share
+	# a similar palette, no transparency required.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 17
 	for i in range(60):
 		var p := Vector3(
 			rng.randf_range(FARM_X_MIN, FARM_X_MAX),
-			0.02,
+			0.015,
 			rng.randf_range(FARM_Z_MIN, FARM_Z_MAX),
 		)
 		var sx := rng.randf_range(2.0, 4.5)
@@ -215,10 +216,7 @@ func _build_ground() -> void:
 		dm.size = Vector2(sx, sz)
 		disc.mesh = dm
 		disc.position = p
-		var dmat := _mat(c, 0.95)
-		dmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		dmat.albedo_color.a = 0.6
-		disc.material_override = dmat
+		disc.material_override = _mat(c, 0.95)  # opaque — no alpha sorting issue
 		add_child(disc)
 
 func _build_path() -> void:
@@ -362,23 +360,56 @@ func _fence_run_kenney(a: Vector3, b: Vector3, step: float, rot_y: float) -> voi
 		_place_collidable_kenney(NATURE + "fence_simple.glb", p, 1.0, rot_y, 0.15, 1.0)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Perimeter cliff walls — visible boundary
+# Perimeter — dense forest of trees + invisible collision walls
+# (replaces the old cliff-wall ring; the player can't cross but it looks
+# natural rather than walled-in)
 
 func _build_perimeter_walls() -> void:
-	var step: float = 2.0
-	# North + south edges
-	var x: float = FARM_X_MIN
-	while x <= FARM_X_MAX:
-		_place_collidable_kenney(NATURE + "cliff_block_rock.glb", Vector3(x, 0, FARM_Z_MIN - 1.0), 2.0, 0.0, 1.0, 2.0)
-		_place_collidable_kenney(NATURE + "cliff_block_rock.glb", Vector3(x, 0, FARM_Z_MAX + 1.0), 2.0, 0.0, 1.0, 2.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 555
+	# Two layers of trees — outer big pines, inner small filler — so the
+	# transition feels like a thickening wood edge.
+	var perimeter_padding: float = 1.5
+	var step: float = 1.6
+	var x: float = FARM_X_MIN - perimeter_padding
+	while x <= FARM_X_MAX + perimeter_padding:
+		_perimeter_tree_pair(rng, Vector3(x, 0, FARM_Z_MIN - perimeter_padding))
+		_perimeter_tree_pair(rng, Vector3(x, 0, FARM_Z_MAX + perimeter_padding))
 		x += step
-	# East + west edges (gap on east for the town gate around z=-3..3)
-	var z: float = FARM_Z_MIN
-	while z <= FARM_Z_MAX:
-		_place_collidable_kenney(NATURE + "cliff_block_rock.glb", Vector3(FARM_X_MIN - 1.0, 0, z), 2.0, 0.0, 1.0, 2.0)
-		if abs(z) > 3.0:
-			_place_collidable_kenney(NATURE + "cliff_block_rock.glb", Vector3(FARM_X_MAX + 1.0, 0, z), 2.0, 0.0, 1.0, 2.0)
+	var z: float = FARM_Z_MIN - perimeter_padding
+	while z <= FARM_Z_MAX + perimeter_padding:
+		_perimeter_tree_pair(rng, Vector3(FARM_X_MIN - perimeter_padding, 0, z))
+		# East side: leave a gap for the town gate
+		if abs(z) > 3.5:
+			_perimeter_tree_pair(rng, Vector3(FARM_X_MAX + perimeter_padding, 0, z))
 		z += step
+	# Invisible solid walls so the player physically can't cross
+	var wall_h: float = 4.0
+	var wall_t: float = 1.0
+	# North + south
+	_add_collider(Vector3(0, wall_h * 0.5, FARM_Z_MIN - 0.5), Vector3(FARM_X_MAX - FARM_X_MIN + 4.0, wall_h, wall_t))
+	_add_collider(Vector3(0, wall_h * 0.5, FARM_Z_MAX + 0.5), Vector3(FARM_X_MAX - FARM_X_MIN + 4.0, wall_h, wall_t))
+	# West (full)
+	_add_collider(Vector3(FARM_X_MIN - 0.5, wall_h * 0.5, 0), Vector3(wall_t, wall_h, FARM_Z_MAX - FARM_Z_MIN + 4.0))
+	# East — split into two walls leaving a gap from z=-3.5 to z=3.5 for the town gate
+	var gap_top := -3.5
+	var gap_bot := 3.5
+	var east_top_len: float = gap_top - FARM_Z_MIN + 2.0
+	var east_bot_len: float = FARM_Z_MAX - gap_bot + 2.0
+	_add_collider(Vector3(FARM_X_MAX + 0.5, wall_h * 0.5, (FARM_Z_MIN + gap_top) * 0.5 - 1.0), Vector3(wall_t, wall_h, east_top_len))
+	_add_collider(Vector3(FARM_X_MAX + 0.5, wall_h * 0.5, (gap_bot + FARM_Z_MAX) * 0.5 + 1.0), Vector3(wall_t, wall_h, east_bot_len))
+
+func _perimeter_tree_pair(rng: RandomNumberGenerator, base: Vector3) -> void:
+	# 1 large pine + 50% chance of a smaller pine alongside, jittered slightly.
+	var tall_path: String = NATURE + ["tree_pineTallA.glb", "tree_pineDefaultA.glb", "tree_pineDefaultB.glb"][rng.randi() % 3]
+	var jitter := Vector3(rng.randf_range(-0.4, 0.4), 0, rng.randf_range(-0.4, 0.4))
+	var s := rng.randf_range(2.2, 3.0)
+	_place_collidable_kenney(tall_path, base + jitter, s, rng.randf() * TAU)  # decorative — invisible walls do collision
+	if rng.randf() < 0.5:
+		var small_path: String = NATURE + ["tree_pineSmallA.glb", "tree_pineSmallB.glb"][rng.randi() % 2]
+		var j2 := Vector3(rng.randf_range(-0.7, 0.7), 0, rng.randf_range(-0.7, 0.7))
+		var s2 := rng.randf_range(1.4, 2.0)
+		_place_collidable_kenney(small_path, base + jitter + j2, s2, rng.randf() * TAU)
 
 func _build_town_gate() -> void:
 	var gate := Area3D.new()
