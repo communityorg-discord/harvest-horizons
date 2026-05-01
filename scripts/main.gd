@@ -17,12 +17,15 @@ const WORLD_BOTTOM := 240
 
 func _ready() -> void:
 	_paint_grass()
+	_paint_pond(Vector2(-32, -150), 5, 3)
+	_paint_path()
 	_build_cottage(Vector2(-130, -50))
 	_build_chicken_house(Vector2(110, -40))
 	_build_fence_around_farm()
 	_scatter_trees()
 	_scatter_flowers()
 	_scatter_rocks()
+	_scatter_bushes()
 
 # ────────────────────────────────────────────────────────────────────────────
 # Background grass — tile a single grass sprite across the whole visible world
@@ -134,6 +137,56 @@ func _scatter_rocks() -> void:
 		var p := _ring_position(rng, 130.0, 240.0)
 		var idx: int = (rng.randi() % 2) + 1
 		_place(SPR + "decor/rock_%d.png" % idx, p)
+
+func _scatter_bushes() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 33
+	for i in range(18):
+		var p := _ring_position(rng, 100.0, 230.0)
+		_place(SPR + "decor/bush_1.png", p)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Pond — a rectangle of water tiles centered on `top_left`
+
+func _paint_pond(top_left: Vector2, w: int, h: int) -> void:
+	var water_tex: Texture2D = load(SPR + "tiles/water.png")
+	for r in range(h):
+		for c in range(w):
+			var s := Sprite2D.new()
+			s.texture = water_tex
+			s.centered = false
+			s.position = top_left + Vector2(c * TILE, r * TILE)
+			_bg.add_child(s)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Stone path — from cottage door area down to the farm gate
+
+func _paint_path() -> void:
+	var path_tex: Texture2D = load(SPR + "tiles/path.png")
+	# Hand-drawn path waypoints (in world pixels). Connect with straight runs.
+	var waypoints := [
+		Vector2(-100, 20),  # in front of cottage
+		Vector2(-30, 40),   # turn east
+		Vector2(40, 60),
+		Vector2(80, 110),   # arrives at farm fence gap
+	]
+	for i in range(waypoints.size() - 1):
+		_draw_path_segment(path_tex, waypoints[i], waypoints[i + 1])
+
+func _draw_path_segment(tex: Texture2D, a: Vector2, b: Vector2) -> void:
+	var dist := a.distance_to(b)
+	var steps: int = int(dist / TILE) + 1
+	for i in range(steps):
+		var t: float = i / float(steps)
+		var p: Vector2 = a.lerp(b, t)
+		# Snap to tile grid for crisp look
+		p.x = floor(p.x / TILE) * TILE
+		p.y = floor(p.y / TILE) * TILE
+		var s := Sprite2D.new()
+		s.texture = tex
+		s.centered = false
+		s.position = p
+		_bg.add_child(s)
 
 func _ring_position(rng: RandomNumberGenerator, r_min: float, r_max: float) -> Vector2:
 	var angle := rng.randf() * TAU
