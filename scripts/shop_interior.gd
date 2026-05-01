@@ -20,10 +20,69 @@ func _ready() -> void:
 		"cafe":       _furnish_cafe()
 		"inn":        _furnish_inn()
 		_:            _furnish_general()
+	_build_shopkeeper()
 	_build_exit_door()
 	# Spawn the player a couple steps inside, facing the room
 	if _player != null:
 		_player.global_position = Vector3(0, 1, 3.0)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Shopkeeper NPC — placed behind the counter in each shop, talk on [E]
+
+func _build_shopkeeper() -> void:
+	var npc := NPC.new()
+	match shop_type:
+		"blacksmith":
+			npc.npc_name = "Thomas"
+			npc.shirt_color = Color(0.32, 0.22, 0.18)  # dark workshirt
+			npc.hat_color   = Color(0.22, 0.18, 0.14)  # leather cap
+			npc.hair_color  = Color(0.22, 0.16, 0.10)
+			npc.position = Vector3(2.5, 0, -2.0)  # behind counter
+			npc.lines = [
+				{"speaker": "Thomas", "text": "Aye?  Come for a weapon, or just lookin'?", "color": Color(0.62, 0.45, 0.32)},
+				{"speaker": "Thomas", "text": "I'd sell you a proper bronze blade, but I'm runnin' low on iron.  Need to mine more — and the mines are flooded.", "color": Color(0.62, 0.45, 0.32)},
+				{"speaker": "Thomas", "text": "If you can pump the water out, I'll give you a discount for life.  That's a promise.", "color": Color(0.62, 0.45, 0.32)},
+				{"speaker": "Thomas", "text": "Until then, take care of that rusted sword Tobias gave you — it's all you've got.", "color": Color(0.62, 0.45, 0.32)},
+			]
+		"general":
+			npc.npc_name = "Gus"
+			npc.shirt_color = Color(0.42, 0.55, 0.32)  # apron green
+			npc.hat_color   = Color(0.85, 0.78, 0.62)  # straw boater
+			npc.hair_color  = Color(0.85, 0.85, 0.85)  # silver
+			npc.position = Vector3(0, 0, -2.5)
+			npc.lines = [
+				{"speaker": "Gus", "text": "Welcome, welcome!  Greenfield General Store — if I ain't got it, you don't need it.", "color": Color(0.55, 0.45, 0.22)},
+				{"speaker": "Gus", "text": "Seeds, fence panels, lanterns, building scraps — I keep 'em all stocked.", "color": Color(0.55, 0.45, 0.22)},
+				{"speaker": "Gus", "text": "Word of advice, friend — buy fence panels BEFORE the storms come.  Mayor'll be 'round to warn you, but the price doubles when folks panic.", "color": Color(0.55, 0.45, 0.22)},
+				{"speaker": "Gus", "text": "Come back any time.  I don't sleep much these days.", "color": Color(0.55, 0.45, 0.22)},
+			]
+		"cafe":
+			npc.npc_name = "Mira"
+			npc.shirt_color = Color(0.95, 0.65, 0.55)  # apron pink
+			npc.hat_color   = Color(0.95, 0.95, 0.92)  # chef hat
+			npc.hair_color  = Color(0.42, 0.27, 0.16)
+			npc.position = Vector3(0, 0, -2.8)
+			npc.lines = [
+				{"speaker": "Mira", "text": "Oh!  A new face — finally!  Sit, sit, what'll you have?", "color": Color(0.85, 0.45, 0.42)},
+				{"speaker": "Mira", "text": "I do strawberry tart, parsnip soup, and a roast that'll make you cry.  Bring me good ingredients and I'll cook you anything.", "color": Color(0.85, 0.45, 0.42)},
+				{"speaker": "Mira", "text": "The radio plays a new recipe every morning — listen at home and I'll teach you to make it.", "color": Color(0.85, 0.45, 0.42)},
+				{"speaker": "Mira", "text": "Come back when you're hungry, farmer.  Stay warm out there!", "color": Color(0.85, 0.45, 0.42)},
+			]
+		"inn":
+			npc.npc_name = "Elara"
+			npc.shirt_color = Color(0.55, 0.32, 0.62)  # purple
+			npc.hat_color   = Color(0.95, 0.95, 0.92)
+			npc.hair_color  = Color(0.42, 0.27, 0.16)
+			npc.position = Vector3(-2.0, 0, -1.5)
+			npc.lines = [
+				{"speaker": "Elara", "text": "Welcome to the Greenfield Inn.  Lily told me you'd be by — she's out at the farm tonight.", "color": Color(0.65, 0.42, 0.72)},
+				{"speaker": "Elara", "text": "We've got rooms for travellers, hot meals, and a fire that never goes out.  Safe shelter, day or night.", "color": Color(0.65, 0.42, 0.72)},
+				{"speaker": "Elara", "text": "If a monster ever knocks you out, the Doctor'll patch you up — but he keeps the medicine here for emergencies.", "color": Color(0.65, 0.42, 0.72)},
+				{"speaker": "Elara", "text": "Ring the bell on the desk if you need me.  Sleep well, farmer.", "color": Color(0.65, 0.42, 0.72)},
+			]
+		_:
+			return
+	add_child(npc)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Shared room shell
