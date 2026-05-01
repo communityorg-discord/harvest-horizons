@@ -1,11 +1,11 @@
 extends Node3D
-## Procedural farm decoration. Builds the cottage, trees, fence, rocks, mailbox,
-## signpost — everything except the player + farm grid + sky.
-## Styled after the concept-art gameplay mockup: blue-shingled cottage,
-## picket fence around the garden plots, conifer trees, scattered rocks.
+## Procedural farm decoration using Kenney CC0 nature/survival models for the
+## natural elements (trees, rocks, fences, flowers, signpost, chest, log stack)
+## and procedural primitives for the cottage / mailbox / well (no matching
+## Kenney models in the packs we pulled).
 
 # ────────────────────────────────────────────────────────────────────────────
-# Palette (matches concept art)
+# Cottage palette (still procedural — see _build_cottage)
 
 const STONE        := Color(0.55, 0.52, 0.48)
 const STONE_DARK   := Color(0.38, 0.36, 0.34)
@@ -16,17 +16,24 @@ const ROOF_BLUE_D  := Color(0.22, 0.32, 0.42)
 const DOOR         := Color(0.32, 0.20, 0.12)
 const WINDOW_GLASS := Color(0.78, 0.88, 0.92)
 const CHIMNEY_BRICK:= Color(0.55, 0.30, 0.22)
-
-const TREE_TRUNK   := Color(0.30, 0.20, 0.12)
-const TREE_GREEN_1 := Color(0.20, 0.42, 0.22)
-const TREE_GREEN_2 := Color(0.16, 0.36, 0.18)
-const TREE_GREEN_3 := Color(0.12, 0.30, 0.14)
-
-const ROCK_GRAY    := Color(0.55, 0.52, 0.50)
-const FENCE_WOOD   := Color(0.78, 0.62, 0.42)
 const PATH_DIRT    := Color(0.62, 0.48, 0.30)
 const GRASS_DARK   := Color(0.30, 0.48, 0.22)
 const GRASS_LIGHT  := Color(0.45, 0.62, 0.30)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Kenney model paths (loaded once, instanced many times)
+
+const NATURE := "res://assets/models/nature/"
+const SURVIVAL := "res://assets/models/survival/"
+
+const TREE_PATHS := [
+	"tree_pineDefaultA.glb", "tree_pineDefaultB.glb",
+	"tree_pineSmallA.glb",   "tree_pineSmallB.glb",
+	"tree_pineTallA.glb",    "tree_oak.glb",
+	"tree_fat.glb",          "tree_default.glb",
+]
+const ROCK_PATHS := ["rock_smallE.glb", "rock_tallH.glb"]
+const FLOWER_PATHS := ["flower_purpleA.glb", "flower_yellowA.glb", "flower_redA.glb"]
 
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -36,14 +43,33 @@ func _ready() -> void:
 	_build_cottage(Vector3(-9.0, 0, -3.0))
 	_build_well(Vector3(-4.5, 0, -7.0))
 	_build_mailbox(Vector3(-4.5, 0, 5.5))
-	_build_signpost(Vector3(8.0, 0, 1.0), "FOREST TRAIL")
+	_place_kenney(SURVIVAL + "signpost.glb", Vector3(8.0, 0, 1.0), 1.6, 0.0)
+	_place_kenney(SURVIVAL + "chest.glb",   Vector3(-7.6, 0, -1.2), 1.6, deg_to_rad(-25))
+	_place_kenney(SURVIVAL + "barrel.glb",  Vector3(-6.6, 0, -0.8), 1.4, 0.0)
+	_place_kenney(NATURE + "log_stackLarge.glb", Vector3(-11.5, 0, 0.0), 1.4, deg_to_rad(20))
 	_build_fence_around_farm()
 	_scatter_trees()
 	_scatter_rocks()
+	_scatter_flowers()
 	_scatter_grass_tufts()
 
 # ────────────────────────────────────────────────────────────────────────────
-# Mesh helpers
+# Kenney model placement
+
+func _place_kenney(path: String, pos: Vector3, scale: float = 1.0, rot_y: float = 0.0) -> Node3D:
+	var packed: PackedScene = load(path)
+	if packed == null:
+		push_warning("Missing model: %s" % path)
+		return null
+	var node: Node3D = packed.instantiate()
+	node.position = pos
+	node.scale = Vector3(scale, scale, scale)
+	node.rotation.y = rot_y
+	add_child(node)
+	return node
+
+# ────────────────────────────────────────────────────────────────────────────
+# Procedural primitive helpers (used for cottage etc.)
 
 func _mat(color: Color, rough: float = 0.9) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -62,20 +88,6 @@ func _box(parent: Node, pos: Vector3, size: Vector3, color: Color, rot: Vector3 
 	add_child(mi)
 	return mi
 
-func _sphere(parent: Node, pos: Vector3, radius: float, color: Color, scale: Vector3 = Vector3.ONE) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = radius
-	sm.height = radius * 2.0
-	sm.radial_segments = 12
-	sm.rings = 6
-	mi.mesh = sm
-	mi.position = pos
-	mi.scale = scale
-	mi.material_override = _mat(color)
-	add_child(mi)
-	return mi
-
 func _cyl(parent: Node, pos: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
@@ -89,15 +101,16 @@ func _cyl(parent: Node, pos: Vector3, radius: float, height: float, color: Color
 	add_child(mi)
 	return mi
 
-func _cone(parent: Node, pos: Vector3, radius_bot: float, height: float, color: Color) -> MeshInstance3D:
+func _sphere(parent: Node, pos: Vector3, radius: float, color: Color, scale: Vector3 = Vector3.ONE) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.0
-	cm.bottom_radius = radius_bot
-	cm.height = height
-	cm.radial_segments = 14
-	mi.mesh = cm
+	var sm := SphereMesh.new()
+	sm.radius = radius
+	sm.height = radius * 2.0
+	sm.radial_segments = 12
+	sm.rings = 6
+	mi.mesh = sm
 	mi.position = pos
+	mi.scale = scale
 	mi.material_override = _mat(color)
 	add_child(mi)
 	return mi
@@ -115,10 +128,9 @@ func _prism(pos: Vector3, size: Vector3, color: Color, rot_y: float = 0.0) -> Me
 	return mi
 
 # ────────────────────────────────────────────────────────────────────────────
-# Ground (replaces the flat plane in main.tscn)
+# Ground + path
 
 func _build_ground() -> void:
-	# A larger darker grass disc with subtle variation
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(80, 80)
@@ -131,7 +143,6 @@ func _build_ground() -> void:
 	add_child(ground)
 
 func _build_path() -> void:
-	# Dirt path running from in front of the cottage, past the mailbox, off to the forest
 	var path_mat := _mat(PATH_DIRT, 0.95)
 	for i in range(20):
 		var t: float = i / 19.0
@@ -146,31 +157,22 @@ func _build_path() -> void:
 		add_child(seg)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Cottage — stone foundation, wood walls, blue shingled roof, chimney
+# Cottage (procedural — no matching Kenney model)
 
 func _build_cottage(origin: Vector3) -> void:
-	# Stone foundation
 	_box(self, origin + Vector3(0, 0.30, 0), Vector3(4.4, 0.60, 3.6), STONE)
-	# Wood walls
 	_box(self, origin + Vector3(0, 1.40, 0), Vector3(4.0, 1.60, 3.2), WOOD_WALL)
-	# Corner posts (dark wood beams)
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			_box(self, origin + Vector3(sx * 1.92, 1.4, sz * 1.52), Vector3(0.16, 1.65, 0.16), WOOD_BEAM)
-	# Door
 	_box(self, origin + Vector3(0, 1.0, 1.62), Vector3(0.7, 1.2, 0.05), DOOR)
-	# Door step
 	_box(self, origin + Vector3(0, 0.65, 1.78), Vector3(0.9, 0.10, 0.30), STONE)
-	# Windows
 	_box(self, origin + Vector3(-1.3, 1.55, 1.62), Vector3(0.55, 0.55, 0.04), WINDOW_GLASS)
 	_box(self, origin + Vector3( 1.3, 1.55, 1.62), Vector3(0.55, 0.55, 0.04), WINDOW_GLASS)
-	# Window frames
 	_box(self, origin + Vector3(-1.3, 1.55, 1.64), Vector3(0.05, 0.55, 0.06), WOOD_BEAM)
 	_box(self, origin + Vector3( 1.3, 1.55, 1.64), Vector3(0.05, 0.55, 0.06), WOOD_BEAM)
 	_box(self, origin + Vector3(-1.3, 1.55, 1.64), Vector3(0.55, 0.05, 0.06), WOOD_BEAM)
 	_box(self, origin + Vector3( 1.3, 1.55, 1.64), Vector3(0.55, 0.05, 0.06), WOOD_BEAM)
-
-	# Roof — gable, two sloped boxes
 	for sz_sign in [-1.0, 1.0]:
 		var slope := MeshInstance3D.new()
 		var bm := BoxMesh.new()
@@ -180,26 +182,20 @@ func _build_cottage(origin: Vector3) -> void:
 		slope.rotation = Vector3(deg_to_rad(40.0 * sz_sign), 0, 0)
 		slope.material_override = _mat(ROOF_BLUE, 0.7)
 		add_child(slope)
-	# Roof ridge
 	_box(self, origin + Vector3(0, 3.55, 0), Vector3(4.7, 0.12, 0.16), ROOF_BLUE_D)
-	# Gable end triangles (front + back)
 	_prism(origin + Vector3(0, 2.95, -1.6), Vector3(4.0, 1.2, 0.10), WOOD_WALL)
 	_prism(origin + Vector3(0, 2.95,  1.6), Vector3(4.0, 1.2, 0.10), WOOD_WALL)
-
-	# Chimney
 	_box(self, origin + Vector3(1.4, 3.6, -0.5), Vector3(0.5, 1.6, 0.5), CHIMNEY_BRICK)
 	_box(self, origin + Vector3(1.4, 4.45, -0.5), Vector3(0.7, 0.18, 0.7), STONE_DARK)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Well
+# Well + mailbox (procedural)
 
 func _build_well(origin: Vector3) -> void:
 	_cyl(self, origin + Vector3(0, 0.45, 0), 0.9, 0.9, STONE)
 	_cyl(self, origin + Vector3(0, 0.95, 0), 0.92, 0.10, STONE_DARK)
-	# Posts holding roof
 	_box(self, origin + Vector3(-0.7, 1.5, 0), Vector3(0.10, 1.1, 0.10), WOOD_BEAM)
 	_box(self, origin + Vector3( 0.7, 1.5, 0), Vector3(0.10, 1.1, 0.10), WOOD_BEAM)
-	# Tiny roof
 	for sx in [-1.0, 1.0]:
 		var slope := MeshInstance3D.new()
 		var bm := BoxMesh.new()
@@ -210,108 +206,94 @@ func _build_well(origin: Vector3) -> void:
 		slope.material_override = _mat(ROOF_BLUE)
 		add_child(slope)
 
-# ────────────────────────────────────────────────────────────────────────────
-# Mailbox
-
 func _build_mailbox(origin: Vector3) -> void:
 	_box(self, origin + Vector3(0, 0.55, 0), Vector3(0.10, 1.1, 0.10), WOOD_BEAM)
 	_box(self, origin + Vector3(0, 1.20, 0), Vector3(0.40, 0.30, 0.55), Color(0.72, 0.30, 0.20))
-	# Little flag
 	_box(self, origin + Vector3(0.22, 1.30, 0), Vector3(0.04, 0.18, 0.10), Color(0.85, 0.20, 0.15))
 
 # ────────────────────────────────────────────────────────────────────────────
-# Signpost
-
-func _build_signpost(origin: Vector3, _label: String) -> void:
-	_box(self, origin + Vector3(0, 1.0, 0), Vector3(0.12, 2.0, 0.12), WOOD_BEAM)
-	_box(self, origin + Vector3(0.30, 1.65, 0), Vector3(0.85, 0.30, 0.06), Color(0.72, 0.55, 0.35))
-
-# ────────────────────────────────────────────────────────────────────────────
-# Picket fence around the farm grid (which sits roughly x:[-5.6..4.5], z:[-6.7..4.0])
+# Picket fence — Kenney fence_simple instances along the perimeter
 
 func _build_fence_around_farm() -> void:
 	var x_min: float = -6.4
 	var x_max: float = 5.5
 	var z_min: float = -7.5
 	var z_max: float = 4.8
-	var step: float = 1.2
-	var rail_h: float = 0.10
-	# Bottom side
-	_fence_run(Vector3(x_min, 0, z_max), Vector3(x_max, 0, z_max), step)
-	# Top side
-	_fence_run(Vector3(x_min, 0, z_min), Vector3(x_max, 0, z_min), step)
-	# Left side
-	_fence_run(Vector3(x_min, 0, z_min), Vector3(x_min, 0, z_max), step)
-	# Right side (with a gap for the path exit)
-	_fence_run(Vector3(x_max, 0, z_min), Vector3(x_max, 0, -0.5), step)
-	_fence_run(Vector3(x_max, 0, 2.5), Vector3(x_max, 0, z_max), step)
+	var step: float = 1.0
+	# Bottom
+	_fence_run_kenney(Vector3(x_min, 0, z_max), Vector3(x_max, 0, z_max), step, 0.0)
+	# Top
+	_fence_run_kenney(Vector3(x_min, 0, z_min), Vector3(x_max, 0, z_min), step, 0.0)
+	# Left
+	_fence_run_kenney(Vector3(x_min, 0, z_min), Vector3(x_min, 0, z_max), step, deg_to_rad(90))
+	# Right (with gap for path)
+	_fence_run_kenney(Vector3(x_max, 0, z_min), Vector3(x_max, 0, -0.5), step, deg_to_rad(90))
+	_fence_run_kenney(Vector3(x_max, 0, 2.5), Vector3(x_max, 0, z_max), step, deg_to_rad(90))
 
-func _fence_run(a: Vector3, b: Vector3, step: float) -> void:
+func _fence_run_kenney(a: Vector3, b: Vector3, step: float, rot_y: float) -> void:
 	var dist: float = a.distance_to(b)
 	var dir: Vector3 = (b - a).normalized()
 	var n: int = int(dist / step)
-	for i in range(n + 1):
-		var p: Vector3 = a + dir * (i * step)
-		# Post
-		_box(self, p + Vector3(0, 0.45, 0), Vector3(0.10, 0.9, 0.10), FENCE_WOOD)
-		# Tiny pointed cap
-		_cone(self, p + Vector3(0, 0.95, 0), 0.10, 0.12, FENCE_WOOD)
-	# Two horizontal rails between posts
-	var mid: Vector3 = (a + b) * 0.5
-	var size: Vector3
-	if abs(dir.x) > abs(dir.z):
-		size = Vector3(dist, 0.06, 0.04)
-	else:
-		size = Vector3(0.04, 0.06, dist)
-	_box(self, mid + Vector3(0, 0.30, 0), size, FENCE_WOOD)
-	_box(self, mid + Vector3(0, 0.65, 0), size, FENCE_WOOD)
+	for i in range(n):
+		var p: Vector3 = a + dir * (i * step + step * 0.5)
+		_place_kenney(NATURE + "fence_simple.glb", p, 1.0, rot_y)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Trees (conifers — three stacked cones on a trunk, like the concept art)
+# Trees — Kenney variety scattered around perimeter
 
 func _scatter_trees() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
 	var positions: Array = []
-	# Ring of trees around the perimeter
-	for i in range(28):
-		var angle: float = (i / 28.0) * TAU + rng.randf_range(-0.05, 0.05)
-		var radius: float = rng.randf_range(14.0, 22.0)
+	for i in range(32):
+		var angle: float = (i / 32.0) * TAU + rng.randf_range(-0.05, 0.05)
+		var radius: float = rng.randf_range(13.0, 22.0)
 		var x: float = cos(angle) * radius
-		var z: float = sin(angle) * radius * 0.7
+		var z: float = sin(angle) * radius * 0.75
 		positions.append(Vector3(x, 0, z))
-	# A few extra clumps near the cottage
+	# Cottage-side cluster
 	positions.append(Vector3(-13.0, 0, -8.0))
 	positions.append(Vector3(-12.0, 0, -5.5))
 	positions.append(Vector3(-14.0, 0, 2.0))
+	positions.append(Vector3(-13.5, 0, 5.0))
 	for p in positions:
-		_build_tree(p, rng.randf_range(0.85, 1.25))
-
-func _build_tree(origin: Vector3, scale: float) -> void:
-	var s: float = scale
-	# Trunk
-	_cyl(self, origin + Vector3(0, 0.4 * s, 0), 0.18 * s, 0.8 * s, TREE_TRUNK)
-	# Foliage cones (stacked, darker as they go up to add depth)
-	_cone(self, origin + Vector3(0, 1.0 * s, 0), 1.05 * s, 1.3 * s, TREE_GREEN_1)
-	_cone(self, origin + Vector3(0, 1.85 * s, 0), 0.85 * s, 1.1 * s, TREE_GREEN_2)
-	_cone(self, origin + Vector3(0, 2.6 * s, 0), 0.55 * s, 0.85 * s, TREE_GREEN_3)
+		var tree_path: String = NATURE + TREE_PATHS[rng.randi() % TREE_PATHS.size()]
+		var s: float = rng.randf_range(1.6, 2.4)
+		var ry: float = rng.randf() * TAU
+		_place_kenney(tree_path, p, s, ry)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Rocks
+# Rocks (Kenney)
 
 func _scatter_rocks() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
-	for i in range(14):
+	for i in range(18):
 		var angle: float = rng.randf() * TAU
-		var radius: float = rng.randf_range(8.0, 18.0)
-		var p := Vector3(cos(angle) * radius, 0.0, sin(angle) * radius * 0.7)
-		var sz: float = rng.randf_range(0.5, 1.1)
-		var r := _sphere(self, p + Vector3(0, sz * 0.25, 0), sz * 0.5, ROCK_GRAY, Vector3(1.0, 0.55, 1.0))
-		r.rotation.y = rng.randf() * TAU
+		var radius: float = rng.randf_range(7.5, 18.0)
+		var p := Vector3(cos(angle) * radius, 0.0, sin(angle) * radius * 0.75)
+		var rock_path: String = NATURE + ROCK_PATHS[rng.randi() % ROCK_PATHS.size()]
+		var s: float = rng.randf_range(1.0, 1.8)
+		var ry: float = rng.randf() * TAU
+		_place_kenney(rock_path, p, s, ry)
 
 # ────────────────────────────────────────────────────────────────────────────
-# Grass tufts (lots of tiny green spheres for life)
+# Flowers (Kenney) — sprinkled near the cottage and along the fence inside
+
+func _scatter_flowers() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 13
+	for i in range(40):
+		var angle: float = rng.randf() * TAU
+		var radius: float = rng.randf_range(4.5, 12.0)
+		var p := Vector3(cos(angle) * radius, 0.0, sin(angle) * radius * 0.85)
+		var flower_path: String = NATURE + FLOWER_PATHS[rng.randi() % FLOWER_PATHS.size()]
+		var s: float = rng.randf_range(0.8, 1.3)
+		var ry: float = rng.randf() * TAU
+		_place_kenney(flower_path, p, s, ry)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Grass tufts (procedural — small and many, kept as primitives for performance)
 
 func _scatter_grass_tufts() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -321,4 +303,5 @@ func _scatter_grass_tufts() -> void:
 		var radius: float = rng.randf_range(7.0, 20.0)
 		var p := Vector3(cos(angle) * radius, 0.04, sin(angle) * radius * 0.85)
 		var s: float = rng.randf_range(0.10, 0.22)
-		_sphere(self, p, s, GRASS_LIGHT if rng.randf() < 0.6 else TREE_GREEN_2, Vector3(1.0, 0.35, 1.0))
+		var c := GRASS_LIGHT if rng.randf() < 0.6 else Color(0.16, 0.36, 0.18)
+		_sphere(self, p, s, c, Vector3(1.0, 0.35, 1.0))

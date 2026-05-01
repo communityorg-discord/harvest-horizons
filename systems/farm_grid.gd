@@ -58,41 +58,13 @@ func _build_tile(r: int, c: int) -> Dictionary:
 	ground.material_override = gmat
 	add_child(ground)
 
-	# Crop visual: stem (cylinder) + leaves (sphere on top), grouped under a Node3D so we can scale uniformly.
+	# Crop visual: a Node3D container that swaps Kenney corn-stage models in
+	# as the plant grows.
 	var crop := Node3D.new()
 	crop.position = pos + Vector3(0, 0.06, 0)
-	add_child(crop)
-
-	var stem := MeshInstance3D.new()
-	var stem_mesh := CylinderMesh.new()
-	stem_mesh.top_radius = 0.04
-	stem_mesh.bottom_radius = 0.06
-	stem_mesh.height = 0.5
-	stem_mesh.radial_segments = 8
-	stem.mesh = stem_mesh
-	stem.position = Vector3(0, 0.25, 0)
-	var stem_mat := StandardMaterial3D.new()
-	stem_mat.albedo_color = Color(0.30, 0.45, 0.18)
-	stem.material_override = stem_mat
-	crop.add_child(stem)
-
-	var leaves := MeshInstance3D.new()
-	var leaf_mesh := SphereMesh.new()
-	leaf_mesh.radius = 0.32
-	leaf_mesh.height = 0.55
-	leaf_mesh.radial_segments = 12
-	leaf_mesh.rings = 6
-	leaves.mesh = leaf_mesh
-	leaves.position = Vector3(0, 0.55, 0)
-	var leaf_mat := StandardMaterial3D.new()
-	leaf_mat.albedo_color = CROP_COLORS[State.PLANTED]
-	leaves.material_override = leaf_mat
-	crop.add_child(leaves)
-
 	crop.visible = false
-	crop.set_meta("stem", stem)
-	crop.set_meta("leaves", leaves)
-	crop.set_meta("leaf_mat", leaf_mat)
+	add_child(crop)
+	# We'll instance the right corn-stage model lazily in _refresh.
 
 	return {
 		"state": State.GRASS,
@@ -112,19 +84,26 @@ func _advance(t: Dictionary) -> void:
 		t.growth_remaining = 0.0
 	_refresh(t)
 
+const CROP_STAGE_MODELS := {
+	State.PLANTED: "res://assets/models/nature/crops_cornStageA.glb",
+	State.GROWING: "res://assets/models/nature/crops_cornStageB.glb",
+	State.READY:   "res://assets/models/nature/crops_cornStageD.glb",
+}
+
 func _refresh(t: Dictionary) -> void:
 	var gmat: StandardMaterial3D = t.ground.material_override
 	gmat.albedo_color = COLORS[t.state]
+	# Clear any existing crop visual children
+	for child in t.crop.get_children():
+		child.queue_free()
 	if t.state >= State.PLANTED:
 		t.crop.visible = true
-		var leaf_mat: StandardMaterial3D = t.crop.get_meta("leaf_mat")
-		leaf_mat.albedo_color = CROP_COLORS.get(t.state, CROP_COLORS[State.PLANTED])
-		var s: float = 0.0
-		match t.state:
-			State.PLANTED: s = 0.3
-			State.GROWING: s = 0.65
-			State.READY:   s = 1.0
-		t.crop.scale = Vector3(s, s, s)
+		var path: String = CROP_STAGE_MODELS.get(t.state, CROP_STAGE_MODELS[State.PLANTED])
+		var packed: PackedScene = load(path)
+		if packed != null:
+			var inst: Node3D = packed.instantiate()
+			inst.scale = Vector3(0.95, 0.95, 0.95)
+			t.crop.add_child(inst)
 	else:
 		t.crop.visible = false
 
