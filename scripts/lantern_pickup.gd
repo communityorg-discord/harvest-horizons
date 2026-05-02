@@ -46,7 +46,7 @@ func _build_visual() -> void:
 	add_child(_glow)
 	# Floating label
 	_label = Label3D.new()
-	_label.text = "✨ Lantern"
+	_label.text = "★ Lantern"
 	_label.font_size = 32
 	_label.outline_size = 6
 	_label.modulate = Color(1.0, 0.95, 0.7)

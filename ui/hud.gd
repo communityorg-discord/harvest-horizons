@@ -24,33 +24,36 @@ const TEXT_LIGHT     := Color(0.96, 0.92, 0.82)
 const TEXT_DIM       := Color(0.78, 0.72, 0.58)
 const SHADOW         := Color(0, 0, 0, 0.55)
 
+# All "icons" are short ASCII / basic-Unicode strings so they render in
+# Godot's default font (no emoji = no tofu boxes).
 const HOTBAR_TOOLS := [
-	{"name": "Hoe",     "icon": "🪓", "key": "1"},
-	{"name": "Water",   "icon": "💧", "key": "2"},
-	{"name": "Axe",     "icon": "🪓", "key": "3"},
-	{"name": "Pickaxe", "icon": "⛏",  "key": "4"},
-	{"name": "Sword",   "icon": "⚔",  "key": "5"},
-	{"name": "Seeds",   "icon": "🌱", "key": "6"},
+	{"name": "Hoe",     "icon": "Hoe",  "key": "1"},
+	{"name": "Water",   "icon": "Wat",  "key": "2"},
+	{"name": "Axe",     "icon": "Axe",  "key": "3"},
+	{"name": "Pickaxe", "icon": "Pck",  "key": "4"},
+	{"name": "Sword",   "icon": "Swd",  "key": "5"},
+	{"name": "Seeds",   "icon": "Sd",   "key": "6"},
 ]
 
 const SIDE_MENU := [
-	{"label": "Bag",     "icon": "🎒", "key": "I"},
-	{"label": "Skills",  "icon": "★",  "key": "K"},
-	{"label": "Journal", "icon": "📖", "key": "U"},
-	{"label": "People",  "icon": "👥", "key": "C"},
-	{"label": "Map",     "icon": "🗺", "key": "M"},
+	{"label": "Bag",     "key": "I"},
+	{"label": "Skills",  "key": "K"},
+	{"label": "Journal", "key": "U"},
+	{"label": "People",  "key": "C"},
+	{"label": "Map",     "key": "M"},
 ]
 
 const QUEST_ICON := {
-	"wizard_letter":  "✉",
-	"first_harvest":  "🌱",
-	"light_the_farm": "🏮",
-	"build_fence":    "🪵",
-	"help_blacksmith":"🔨",
-	"repair_bridge":  "🌉",
+	"wizard_letter":  "★",
+	"first_harvest":  "★",
+	"light_the_farm": "★",
+	"build_fence":    "★",
+	"help_blacksmith":"★",
+	"repair_bridge":  "★",
 }
 
-const WEATHER_ICONS := ["☀", "☁", "🌧", "⛈", "🌬", "🌫", "❄", "🔥"]
+# Single-letter weather "icons" — match the order of the Weather enum
+const WEATHER_ICONS := ["S", "C", "R", "T", "W", "F", "*", "H"]
 
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -168,12 +171,12 @@ func _build_player_card() -> void:
 	col.add_theme_constant_override("separation", 4)
 	pill.add_child(col)
 
-	var hp_pair := _bar_with_label(HP_TOP, HP_BOT, "♥")
+	var hp_pair := _bar_with_label(HP_TOP, HP_BOT, "HP")
 	col.add_child(hp_pair[0])
 	_hp_bar = hp_pair[1]
 	_hp_text = hp_pair[2]
 
-	var en_pair := _bar_with_label(EN_TOP, EN_BOT, "⚡")
+	var en_pair := _bar_with_label(EN_TOP, EN_BOT, "EN")
 	col.add_child(en_pair[0])
 	_en_bar = en_pair[1]
 	_en_text = en_pair[2]
@@ -283,13 +286,13 @@ func _build_top_pill() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(row)
 
-	_money_label = _add_inline_stat(row, "🪙", "0g", GOLD)
+	_money_label = _add_inline_stat(row, "$", "0g", GOLD)
 	_add_divider(row)
-	_weather_label = _add_inline_stat(row, "☀", "Sunny", TEXT_LIGHT)
+	_weather_label = _add_inline_stat(row, "S", "Sunny", TEXT_LIGHT)
 	_add_divider(row)
-	_date_label = _add_inline_stat(row, "📅", "Spring 1, Y1", TEXT_LIGHT)
+	_date_label = _add_inline_stat(row, "·", "Spring 1, Y1", TEXT_LIGHT)
 	_add_divider(row)
-	_time_label = _add_inline_stat(row, "🕐", "06:00 AM", TEXT_LIGHT)
+	_time_label = _add_inline_stat(row, "·", "06:00 AM", TEXT_LIGHT)
 
 func _add_inline_stat(parent: Node, icon: String, value: String, value_color: Color) -> Label:
 	var inner := HBoxContainer.new()
@@ -351,7 +354,7 @@ func _build_minimap() -> void:
 	map.add_child(dot)
 
 	# Side icon stack (Map / Quests / Bag)
-	var icons := ["🗺", "❗", "🎒"]
+	var icons := ["M", "!", "B"]
 	for i in range(icons.size()):
 		var btn := _round_button(icons[i], 30)
 		btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -381,7 +384,6 @@ func _build_quest_panel() -> void:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 6)
 	col.add_child(header)
-	header.add_child(_label("📜", 12, GOLD))
 	header.add_child(_label("ACTIVE QUESTS", 10, GOLD))
 	var sep := ColorRect.new()
 	sep.color = Color(1, 1, 1, 0.15)
@@ -509,7 +511,9 @@ func _build_side_menu() -> void:
 	var sep: int = 6
 	var n: int = SIDE_MENU.size()
 	for i in range(n):
-		var btn := _round_button(SIDE_MENU[i].icon, btn_d)
+		# Use the first 3 letters of the label as the icon (e.g. "Bag", "Skl", "Jrn")
+		var icon_text: String = String(SIDE_MENU[i].label).substr(0, 3)
+		var btn := _round_button(icon_text, btn_d)
 		btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 		btn.offset_right = -14 - (n - 1 - i) * (btn_d + sep)
 		btn.offset_left = btn.offset_right - btn_d
@@ -523,7 +527,8 @@ func _build_side_menu() -> void:
 		key.offset_bottom = -2
 		btn.add_child(key)
 
-# A reusable round icon "coin" that brightens its border + adds glow on hover
+# A reusable round icon "coin" that brightens its border + adds glow on hover.
+# Font size auto-scales: long text shrinks so it fits in the disc.
 func _round_button(icon: String, d: int) -> Panel:
 	var b := Panel.new()
 	var sb := StyleBoxFlat.new()
@@ -538,7 +543,13 @@ func _round_button(icon: String, d: int) -> Panel:
 	sb.shadow_size = 6
 	sb.shadow_offset = Vector2(0, 2)
 	b.add_theme_stylebox_override("panel", sb)
-	var icon_l := _label(icon, int(d * 0.42), GOLD, true)
+	# Shrink font for multi-character labels so they fit
+	var base_size: int = int(d * 0.42)
+	if icon.length() >= 3:
+		base_size = int(d * 0.28)
+	elif icon.length() == 2:
+		base_size = int(d * 0.36)
+	var icon_l := _label(icon, base_size, GOLD, true)
 	icon_l.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	icon_l.offset_top = -3 if d > 35 else -1
@@ -576,7 +587,6 @@ func _build_chat_log() -> void:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 4)
 	col.add_child(header)
-	header.add_child(_label("📜", 11, GOLD))
 	header.add_child(_label("EVENT LOG", 9, GOLD))
 	var sep := ColorRect.new()
 	sep.color = Color(1, 1, 1, 0.12)
@@ -612,7 +622,7 @@ func _refresh_inventory_strip() -> void:
 		var n: int = GameState.item_count(k)
 		if n > 0:
 			parts.append("%s ×%d" % [_pretty(k), n])
-	_inventory_label.text = "🎒 " + ("  ·  ".join(parts) if parts.size() > 0 else "(empty)")
+	_inventory_label.text = "Bag: " + ("  ·  ".join(parts) if parts.size() > 0 else "(empty)")
 
 func _pretty(item_id: String) -> String:
 	return item_id.capitalize().replace("_", " ")
